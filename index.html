@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>K8sConsole — the Kubernetes desktop for people who run production</title>
+    <meta name="description" content="K8sConsole is an agent-free Kubernetes desktop app: live cluster maps, monitoring, logs, shells, security scanning, access control, Helm and an AI assistant that proposes fixes you review." />
+    <meta property="og:title" content="K8sConsole — the Kubernetes desktop" />
+    <meta property="og:description" content="Agent-free. Live maps, monitoring, security scan, access control, Helm and an AI assistant — in one desktop app." />
+    <meta property="og:image" content="assets/screens/overview.png" />
+    <link rel="icon" href="assets/favicon-32.png" sizes="32x32" />
+    <style>
+      :root {
+        --bg: #0b1016;
+        --bg-2: #111821;
+        --card: #141c26;
+        --line: #233041;
+        --text: #e6edf3;
+        --dim: #9aa8b8;
+        --brand-1: #1e296e;
+        --brand-2: #0e9488;
+        --accent: #2dd4bf;
+        --accent-ink: #04201c;
+        --link: #5eead4;
+        --radius: 14px;
+        --max: 1160px;
+        color-scheme: dark;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f7f9fb;
+          --bg-2: #eef3f7;
+          --card: #ffffff;
+          --line: #d8e0e8;
+          --text: #0f1b27;
+          --dim: #4d5c6b;
+          --accent: #0f766e;
+          --accent-ink: #ffffff;
+          --link: #0f766e;
+          color-scheme: light;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+      }
+      a {
+        color: var(--link);
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+      code,
+      pre {
+        font-family: ui-monospace, 'JetBrains Mono', Menlo, Consolas, monospace;
+      }
+      .wrap {
+        max-width: var(--max);
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      .skip {
+        position: absolute;
+        left: -999px;
+      }
+      .skip:focus {
+        left: 16px;
+        top: 16px;
+        background: var(--card);
+        padding: 8px 12px;
+        border-radius: 8px;
+        z-index: 10;
+      }
+
+      /* Nav */
+      header.nav {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        backdrop-filter: blur(12px);
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        border-bottom: 1px solid var(--line);
+      }
+      .nav .wrap {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        height: 64px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 750;
+        font-size: 18px;
+        letter-spacing: -0.01em;
+      }
+      .brand img {
+        width: 30px;
+        height: 30px;
+      }
+      .nav nav {
+        display: flex;
+        gap: 20px;
+        margin-left: auto;
+      }
+      .nav nav a {
+        color: var(--dim);
+        text-decoration: none;
+        font-size: 15px;
+      }
+      .nav nav a:hover {
+        color: var(--text);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 18px;
+        border-radius: 10px;
+        font-weight: 650;
+        text-decoration: none;
+        border: 1px solid var(--line);
+        color: var(--text);
+        background: var(--card);
+        white-space: nowrap;
+      }
+      .btn:hover {
+        border-color: var(--accent);
+      }
+      .btn-primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+      }
+      .btn-primary:hover {
+        filter: brightness(1.08);
+      }
+      .nav .btn {
+        padding: 8px 14px;
+      }
+
+      /* Hero */
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 84px 0 40px;
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        inset: -40% -10% auto -10%;
+        height: 640px;
+        background: radial-gradient(closest-side, color-mix(in srgb, var(--brand-2) 34%, transparent), transparent), radial-gradient(closest-side at 70% 40%, color-mix(in srgb, var(--brand-1) 55%, transparent), transparent);
+        filter: blur(30px);
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      .hero .wrap {
+        position: relative;
+        text-align: center;
+      }
+      .eyebrow {
+        display: inline-block;
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+        border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        border-radius: 999px;
+        padding: 4px 12px;
+        margin-bottom: 22px;
+      }
+      h1 {
+        font-size: clamp(36px, 6vw, 64px);
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+        margin: 0 auto 18px;
+        max-width: 900px;
+      }
+      .lead {
+        font-size: clamp(17px, 2.2vw, 20px);
+        color: var(--dim);
+        max-width: 760px;
+        margin: 0 auto 30px;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .proof {
+        display: flex;
+        gap: 10px 26px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin: 28px 0 46px;
+        color: var(--dim);
+        font-size: 14.5px;
+      }
+      .proof span::before {
+        content: '✓';
+        color: var(--accent);
+        font-weight: 800;
+        margin-right: 7px;
+      }
+      .shot {
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03);
+        overflow: hidden;
+        background: var(--card);
+      }
+      .hero .shot {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+
+      /* Sections */
+      section {
+        padding: 84px 0;
+      }
+      section.alt {
+        background: var(--bg-2);
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+      h2 {
+        font-size: clamp(28px, 4vw, 40px);
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        margin: 0 0 14px;
+      }
+      .section-lead {
+        color: var(--dim);
+        font-size: 18px;
+        max-width: 720px;
+        margin: 0 0 40px;
+      }
+      .center {
+        text-align: center;
+      }
+      .center .section-lead {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .feature {
+        display: grid;
+        grid-template-columns: 1fr 1.35fr;
+        gap: 48px;
+        align-items: center;
+        margin-bottom: 84px;
+      }
+      .feature:last-child {
+        margin-bottom: 0;
+      }
+      .feature.flip {
+        grid-template-columns: 1.35fr 1fr;
+      }
+      .feature.flip .text {
+        order: 2;
+      }
+      .feature h3 {
+        font-size: 26px;
+        letter-spacing: -0.015em;
+        margin: 6px 0 12px;
+      }
+      .feature p {
+        color: var(--dim);
+        margin: 0 0 14px;
+      }
+      .kicker {
+        color: var(--accent);
+        font-weight: 700;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      ul.ticks {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      ul.ticks li {
+        padding-left: 26px;
+        position: relative;
+        margin: 8px 0;
+      }
+      ul.ticks li::before {
+        content: '';
+        position: absolute;
+        left: 2px;
+        top: 9px;
+        width: 12px;
+        height: 7px;
+        border-left: 2.5px solid var(--accent);
+        border-bottom: 2.5px solid var(--accent);
+        transform: rotate(-45deg);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px;
+      }
+      .card h4 {
+        margin: 12px 0 6px;
+        font-size: 17px;
+      }
+      .card p {
+        margin: 0;
+        color: var(--dim);
+        font-size: 15px;
+      }
+      .icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        color: var(--accent);
+      }
+      .icon svg {
+        width: 20px;
+        height: 20px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .trust {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      .trust .card b {
+        display: block;
+        font-size: 17px;
+        margin-bottom: 6px;
+      }
+
+      /* Download */
+      .download {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 28px;
+        align-items: start;
+      }
+      .download > *,
+      .feature > * {
+        min-width: 0;
+      }
+      pre.cmd {
+        background: #070b10;
+        color: #d6e2ee;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px 18px;
+        overflow-x: auto;
+        font-size: 14px;
+        margin: 0 0 14px;
+      }
+      .meta {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px 16px;
+        font-size: 14.5px;
+      }
+      .meta dt {
+        color: var(--dim);
+      }
+      .meta dd {
+        margin: 0;
+        word-break: break-all;
+      }
+
+      /* FAQ */
+      details {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 10px;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 650;
+      }
+      details p {
+        color: var(--dim);
+        margin: 10px 0 0;
+      }
+
+      .muted {
+        color: var(--dim);
+      }
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 36px 0 48px;
+        color: var(--dim);
+        font-size: 14px;
+      }
+      footer .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px 28px;
+        align-items: center;
+      }
+      footer .legal {
+        flex-basis: 100%;
+        font-size: 13px;
+      }
+
+      @media (max-width: 860px) {
+        .nav nav {
+          display: none;
+        }
+        .feature,
+        .feature.flip,
+        .download {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+        .feature.flip .text {
+          order: 0;
+        }
+        .hero {
+          padding-top: 56px;
+        }
+        section {
+          padding: 64px 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="nav">
+      <div class="wrap">
+        <a class="brand" href="#top" aria-label="K8sConsole home"><img src="assets/logo.svg" alt="" width="30" height="30" /> K8sConsole</a>
+        <nav aria-label="Primary">
+          <a href="#features">Features</a>
+          <a href="#assistant">AI Assistant</a>
+          <a href="#security">Security</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="btn btn-primary" href="#download">Download</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="hero" id="top">
+        <div class="wrap">
+          <span class="eyebrow">Agent-free Kubernetes desktop</span>
+          <h1>See your whole cluster. Fix what's wrong.</h1>
+          <p class="lead">K8sConsole puts live maps, monitoring, logs, shells, security checks, access control, Helm and an AI assistant into one fast desktop app. It connects straight from your kubeconfig and installs nothing in your clusters.</p>
+          <div class="cta">
+            <a class="btn btn-primary" href="#download"
+              ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" /></svg> Download for Linux</a
+            >
+            <a class="btn" href="#features">See what's inside</a>
+          </div>
+          <div class="proof" aria-label="Key facts">
+            <span>No agents in your cluster</span>
+            <span>No account or telemetry</span>
+            <span>Works with any cluster your kubeconfig reaches</span>
+          </div>
+          <div class="shot"><img src="assets/screens/overview.png" alt="K8sConsole cluster overview with node readiness, pod health, deployment availability, capacity and recent warning events" width="1440" height="900" /></div>
+        </div>
+      </div>
+
+      <section id="features">
+        <div class="wrap">
+          <div class="feature">
+            <div class="text">
+              <div class="kicker">Cluster Map &amp; Relationships</div>
+              <h3>Understand a namespace in one glance</h3>
+              <p>Traffic flows left to right, from Ingress to Service to workloads to pods to the config and storage they depend on, and every box is coloured by health. Click anything to open it. Every object also gets its own relationship graph.</p>
+              <ul class="ticks">
+                <li>Ownership, selectors, routes, mounts, volumes, identities and network policies</li>
+                <li>A node map shows every pod placed on its node</li>
+                <li>Live: updates as your cluster changes</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/cluster-map.png" alt="Cluster Map showing an Ingress routing to a Service, a Deployment with its ReplicaSet and pods, and the ConfigMaps, Secrets and node they use" loading="lazy" width="1440" height="900" /></div>
+          </div>
+
+          <div class="feature flip">
+            <div class="text">
+              <div class="kicker">Monitor</div>
+              <h3>Live usage, without installing anything</h3>
+              <p>CPU, memory, network and disk for the cluster, every node and every pod, with an hour of history. Usage bars show requests and limits, so you can see what's oversized and what's about to be throttled.</p>
+              <ul class="ticks">
+                <li>Reads the kubelet Summary API, or metrics-server when available</li>
+                <li>Sort pods by CPU, memory or restarts and drill into any of them</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/monitor.png" alt="Monitor view with cluster CPU, memory and network charts and a node usage table" loading="lazy" width="1440" height="900" /></div>
+          </div>
+
+          <div class="feature" id="assistant">
+            <div class="text">
+              <div class="kicker">AI Assistant</div>
+              <h3>Ask why. Get evidence, then a fix you control.</h3>
+              <p>Ask a question in plain language. The assistant investigates with read-only tools (resources, events, logs, metrics, security findings) and explains what it found. When a change would help, it drafts the manifest for you to review, dry-run and apply.</p>
+              <ul class="ticks">
+                <li>It never changes your cluster on its own</li>
+                <li>Secret values are never sent; log access is your choice</li>
+                <li>Bring your own Claude API key, stored encrypted on your machine</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/assistant.png" alt="AI Assistant explaining that a pod is crash-looping, with a proposed change ready for review" loading="lazy" width="1440" height="900" /></div>
+          </div>
+
+          <div class="feature flip" id="security">
+            <div class="text">
+              <div class="kicker">Security Scan &amp; Access</div>
+              <h3>Find risky settings. Fix them in one click.</h3>
+              <p>Checks pod security, RBAC and network exposure, gives a posture score, and explains every finding in plain language. Safe fixes come with the exact patch, a server-side dry run and an apply button.</p>
+              <ul class="ticks">
+                <li>Privileged containers, host access, root users, missing limits, wildcard roles, exposed services</li>
+                <li>"Who can delete pods here?", a permission matrix for any user, group or service account, and a visual role editor</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/security.png" alt="Security Scan with a posture score, severity counts and an expanded finding offering an automatic fix" loading="lazy" width="1440" height="900" /></div>
+          </div>
+
+          <div class="feature">
+            <div class="text">
+              <div class="kicker">Terminal</div>
+              <h3>A real terminal that already knows your cluster</h3>
+              <p>Open zsh or bash in a dock. Cluster shells are bound to the selected cluster and namespace without touching your kubeconfig. kubectl completion is loaded, and inline suggestions offer the commands you're most likely to need for the objects in front of you.</p>
+            </div>
+            <div class="shot"><img src="assets/screens/terminal.png" alt="Integrated terminal with an inline kubectl suggestion and a suggestion bar" loading="lazy" width="1440" height="900" /></div>
+          </div>
+
+          <div class="feature flip">
+            <div class="text">
+              <div class="kicker">Event Timeline</div>
+              <h3>See incidents unfold</h3>
+              <p>Events laid out per object over time, with an activity strip and warnings highlighted, so the crash loop, the failed mount and the rollout line up on one screen.</p>
+            </div>
+            <div class="shot"><img src="assets/screens/timeline.png" alt="Event timeline with one lane per object and a warning bar spanning a crash loop" loading="lazy" width="1440" height="900" /></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="alt">
+        <div class="wrap center">
+          <h2>Everything you reach for, in one place</h2>
+          <p class="section-lead">Built for the daily work of running Kubernetes, from the first look to the fix.</p>
+        </div>
+        <div class="wrap grid">
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 14h8" /></svg></div>
+            <h4>Live resources</h4>
+            <p>38 built-in kinds and every custom resource, with live updates, sorting and label filters.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M8 16h8" /></svg></div>
+            <h4>YAML with guard-rails</h4>
+            <p>Live validation, server-side dry run, conflict detection and create-from-YAML.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" /></svg></div>
+            <h4>Logs</h4>
+            <p>Follow, previous container, timestamps, since/tail, search and download.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="m5 8 4 4-4 4M12 16h7" /></svg></div>
+            <h4>Pod shells</h4>
+            <p>Interactive shells in any container, with bash, then sh, detected automatically.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z" /><path d="M3 12h4M17 12h4" /></svg></div>
+            <h4>Port forwarding</h4>
+            <p>Pods and services, named ports, local-only listeners, one place to manage them.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18" /><circle cx="12" cy="12" r="9" /></svg></div>
+            <h4>Helm</h4>
+            <p>Repositories, chart search, install and upgrade with dry run, history and rollback.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4" /></svg></div>
+            <h4>Safe actions</h4>
+            <p>Scale, restart, evict, cordon, drain and CronJob runs. Every change asks first.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" /></svg></div>
+            <h4>Every cluster</h4>
+            <p>All your kubeconfigs, kubectl auth plugins, OIDC tokens, proxies and automatic reconnects.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <h2>Secure by design</h2>
+          <p class="section-lead">Your clusters and credentials stay yours.</p>
+          <div class="trust">
+            <div class="card"><b>Nothing in your cluster</b>K8sConsole talks to the Kubernetes API with your existing credentials. No agents, no operators, no CRDs.</div>
+            <div class="card"><b>Credentials never reach the UI</b>Kubeconfigs are read in an isolated background process. The interface runs in a sandbox with no network access.</div>
+            <div class="card"><b>Changes are explicit</b>Edits and fixes run a server-side dry run, show what will change and ask before applying. Deletes require typing the name.</div>
+            <div class="card"><b>No telemetry</b>No account, no licence server, no usage tracking. The AI Assistant is off until you add a key.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="alt" id="download">
+        <div class="wrap download">
+          <div>
+            <h2>Download K8sConsole</h2>
+            <p class="section-lead">Version 1.0.0 for Linux x86-64 (Ubuntu 22.04+, Debian 12+).</p>
+            <p><a class="btn btn-primary" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.0.0/k8sconsole_1.0.0_amd64.deb">Download .deb (≈ 89 MB)</a></p>
+            <pre class="cmd" aria-label="Install command"><code>sudo apt install ./k8sconsole_1.0.0_amd64.deb
+k8sconsole</code></pre>
+            <p class="muted">Optional: <code>kubectl</code> for terminal completion, <code>zsh</code> for inline suggestions, <code>helm</code> 3 for Helm features.</p>
+          </div>
+          <div class="card">
+            <dl class="meta">
+              <dt>Version</dt>
+              <dd>1.0.0</dd>
+              <dt>Package</dt>
+              <dd>k8sconsole_1.0.0_amd64.deb</dd>
+              <dt>SHA-256</dt>
+              <dd><code id="sha">49c5668fc4ab4d26f267b82778f40ce4a05e758c8ab8b71777bd8a84530d5200</code></dd>
+              <dt>Verify</dt>
+              <dd><code>sha256sum k8sconsole_1.0.0_amd64.deb</code></dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq">
+        <div class="wrap">
+          <h2>Questions</h2>
+          <details>
+            <summary>Do I need to install anything in my cluster?</summary>
+            <p>No. K8sConsole uses the Kubernetes API with the credentials in your kubeconfig. Monitoring reads the kubelet Summary API through the API server, or metrics-server if you have it.</p>
+          </details>
+          <details>
+            <summary>Which clusters does it work with?</summary>
+            <p>Any conformant Kubernetes cluster your kubeconfig can reach, self-hosted or managed. Cloud providers' sign-in plugins work the same way they do with kubectl: if <code>kubectl</code> can connect, K8sConsole can.</p>
+          </details>
+          <details>
+            <summary>What does the AI Assistant send, and where?</summary>
+            <p>Only when you use it: your question plus the cluster data it reads to answer (for example resource summaries, events and, if you allow it, log lines) go to the Claude API using your own API key. Secret values and credential-looking environment values are never sent. It can't change your cluster; you review and apply its proposals yourself.</p>
+          </details>
+          <details>
+            <summary>Will it change anything without asking?</summary>
+            <p>No. Every change shows a confirmation, edits support server-side dry runs, and destructive actions ask you to type the resource name.</p>
+          </details>
+          <details>
+            <summary>Which platforms are supported?</summary>
+            <p>Linux on x86-64 today, as a .deb package for Ubuntu and Debian.</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <a class="brand" href="#top"><img src="assets/logo.svg" alt="" width="24" height="24" /> K8sConsole</a>
+        <span>© 2026 K8sConsole. All rights reserved.</span>
+        <a href="#download">Download</a>
+        <a href="#faq">FAQ</a>
+        <p class="legal">Kubernetes® is a registered trademark of The Linux Foundation. Claude is a trademark of Anthropic, PBC. Other product names are trademarks of their respective owners. K8sConsole is an independent product, not affiliated with or endorsed by them.</p>
+      </div>
+    </footer>
+  </body>
+</html>
