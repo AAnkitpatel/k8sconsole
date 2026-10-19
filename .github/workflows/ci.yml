@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+      - name: Type check
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: System libraries for the UI test
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgtk-3-0t64 libnss3 libasound2t64 libgbm1 >/dev/null
+      - name: ECS UI test (local AWS stand-in)
+        run: xvfb-run -a node tests/e2e/ecs.mjs
+
+  package:
+    name: Package
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci && node node_modules/electron/install.js
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq fakeroot >/dev/null
+      - name: Build .deb
+        run: npm run package:deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: k8sconsole-deb
+          path: dist/*.deb*
+          retention-days: 14

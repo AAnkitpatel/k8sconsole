@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>K8sConsole — the Kubernetes desktop for people who run production</title>
-    <meta name="description" content="K8sConsole is an agent-free Kubernetes desktop app: live cluster maps, monitoring, logs, shells, security scanning, access control, Helm and an AI assistant that proposes fixes you review." />
-    <meta property="og:title" content="K8sConsole — the Kubernetes desktop" />
+    <title>K8sConsole — one desktop console for Kubernetes and Amazon ECS</title>
+    <meta name="description" content="K8sConsole is an agent-free desktop console for Kubernetes and Amazon ECS: live maps, monitoring, logs, shells, security scanning, access control, Helm, ECS services and tasks with CloudWatch logs, and an AI assistant that proposes fixes you review." />
+    <meta property="og:title" content="K8sConsole — Kubernetes and Amazon ECS in one desktop app" />
     <meta property="og:description" content="Agent-free. Live maps, monitoring, security scan, access control, Helm and an AI assistant — in one desktop app." />
     <meta property="og:image" content="assets/screens/overview.png" />
     <link rel="icon" href="assets/favicon-32.png" sizes="32x32" />
@@ -477,9 +477,9 @@
     <main id="main">
       <div class="hero" id="top">
         <div class="wrap">
-          <span class="eyebrow">Agent-free Kubernetes desktop</span>
-          <h1>See your whole cluster. Fix what's wrong.</h1>
-          <p class="lead">K8sConsole puts live maps, monitoring, logs, shells, security checks, access control, Helm and an AI assistant into one fast desktop app. It connects straight from your kubeconfig and installs nothing in your clusters.</p>
+          <span class="eyebrow">Agent-free console for Kubernetes and Amazon ECS</span>
+          <h1>See every cluster. Fix what's wrong.</h1>
+          <p class="lead">K8sConsole puts live maps, monitoring, logs, shells, security checks, access control, Helm and an AI assistant into one fast desktop app, for Kubernetes and Amazon ECS. It connects straight from your kubeconfig and your AWS profiles, and installs nothing in your clusters.</p>
           <div class="cta">
             <a class="btn btn-primary" href="#download"
               ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" /></svg> Download for Linux</a
@@ -489,7 +489,7 @@
           <div class="proof" aria-label="Key facts">
             <span>No agents in your cluster</span>
             <span>No account or telemetry</span>
-            <span>Works with any cluster your kubeconfig reaches</span>
+            <span>Kubernetes and Amazon ECS in one app</span>
           </div>
           <div class="shot"><img src="assets/screens/overview.png" alt="K8sConsole cluster overview with node readiness, pod health, deployment availability, capacity and recent warning events" width="1440" height="900" /></div>
         </div>
@@ -509,6 +509,34 @@
               </ul>
             </div>
             <div class="shot"><img src="assets/screens/cluster-map.png" alt="Cluster Map showing an Ingress routing to a Service, a Deployment with its ReplicaSet and pods, and the ConfigMaps, Secrets and node they use" loading="lazy" width="1440" height="900" /></div>
+          </div>
+
+          <div class="feature" id="ecs">
+            <div class="text">
+              <div class="kicker">Amazon ECS</div>
+              <h3>Your ECS services, next to your Kubernetes clusters</h3>
+              <p>Switch the sidebar to Amazon ECS and connect with an AWS profile or your IAM role. Services, tasks and task definitions are live, with CloudWatch logs, CPU and memory charts, load balancer health and a service map from the load balancer down to every task.</p>
+              <ul class="ticks">
+                <li>Read-only by default: no change leaves the app until you switch it off</li>
+                <li>Stopped tasks with stop reasons and exit codes, so crashes are easy to explain</li>
+                <li>Scale, redeploy, roll back a revision, run one-off tasks and open ECS Exec shells, each with a confirmation</li>
+                <li>An ECS security scan for task definitions, services and open security groups</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/ecs-map.png" alt="Amazon ECS service map: a load balancer routing to a target group and service, its running tasks, a failed task, task definition revisions and the security group" loading="lazy" width="1440" height="834" /></div>
+          </div>
+
+          <div class="feature flip">
+            <div class="text">
+              <div class="kicker">ECS services and tasks</div>
+              <h3>Deployments, events, logs and health in one panel</h3>
+              <p>Open a service to see its rollout, the tasks it runs, the latest service events, CloudWatch logs from every task, utilization over time and the health of each load balancer target.</p>
+              <ul class="ticks">
+                <li>Edit a task definition as JSON and register it as a new revision</li>
+                <li>An AWS shell in the integrated terminal, bound to your profile and region</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/ecs-services.png" alt="Amazon ECS services list with status and running counts, and a service details panel with deployments, tasks, events, logs, metrics and targets tabs" loading="lazy" width="1440" height="834" /></div>
           </div>
 
           <div class="feature flip">
@@ -574,7 +602,7 @@
       <section class="alt">
         <div class="wrap center">
           <h2>Everything you reach for, in one place</h2>
-          <p class="section-lead">Built for the daily work of running Kubernetes, from the first look to the fix.</p>
+          <p class="section-lead">Built for the daily work of running Kubernetes and Amazon ECS, from the first look to the fix.</p>
         </div>
         <div class="wrap grid">
           <div class="card">
@@ -637,22 +665,22 @@
         <div class="wrap download">
           <div>
             <h2>Download K8sConsole</h2>
-            <p class="section-lead">Version 1.0.0 for Linux x86-64 (Ubuntu 22.04+, Debian 12+).</p>
-            <p><a class="btn btn-primary" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.0.0/k8sconsole_1.0.0_amd64.deb">Download .deb (≈ 89 MB)</a></p>
-            <pre class="cmd" aria-label="Install command"><code>sudo apt install ./k8sconsole_1.0.0_amd64.deb
+            <p class="section-lead">Version 1.1.0 for Linux x86-64 (Ubuntu 22.04+, Debian 12+).</p>
+            <p><a class="btn btn-primary" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.1.0/k8sconsole_1.1.0_amd64.deb">Download .deb (≈ 89 MB)</a></p>
+            <pre class="cmd" aria-label="Install command"><code>sudo apt install ./k8sconsole_1.1.0_amd64.deb
 k8sconsole</code></pre>
-            <p class="muted">Optional: <code>kubectl</code> for terminal completion, <code>zsh</code> for inline suggestions, <code>helm</code> 3 for Helm features.</p>
+            <p class="muted">Optional: <code>kubectl</code> for terminal completion, <code>zsh</code> for inline suggestions, <code>helm</code> 3 for Helm features, the <code>aws</code> CLI for the AWS shell and ECS Exec.</p>
           </div>
           <div class="card">
             <dl class="meta">
               <dt>Version</dt>
-              <dd>1.0.0</dd>
+              <dd>1.1.0</dd>
               <dt>Package</dt>
-              <dd>k8sconsole_1.0.0_amd64.deb</dd>
+              <dd>k8sconsole_1.1.0_amd64.deb</dd>
               <dt>SHA-256</dt>
-              <dd><code id="sha">49c5668fc4ab4d26f267b82778f40ce4a05e758c8ab8b71777bd8a84530d5200</code></dd>
+              <dd><code id="sha">ef17b9f8fba79e75c2c1fe48f0e6aec4aaacecd495107a7e5b0f1ae1aaaabc42</code></dd>
               <dt>Verify</dt>
-              <dd><code>sha256sum k8sconsole_1.0.0_amd64.deb</code></dd>
+              <dd><code>sha256sum k8sconsole_1.1.0_amd64.deb</code></dd>
             </dl>
           </div>
         </div>
@@ -668,6 +696,14 @@ k8sconsole</code></pre>
           <details>
             <summary>Which clusters does it work with?</summary>
             <p>Any conformant Kubernetes cluster your kubeconfig can reach, self-hosted or managed. Cloud providers' sign-in plugins work the same way they do with kubectl: if <code>kubectl</code> can connect, K8sConsole can.</p>
+          </details>
+          <details>
+            <summary>How does it connect to Amazon ECS?</summary>
+            <p>With the AWS credentials you already use: a profile from <code>~/.aws</code> (access keys, IAM Identity Center, or a profile that assumes a role), or the default credential chain, including the IAM role of the EC2 instance or container it runs on. You can also assume a role from the app. Keys stay on your machine and are never shown in the app.</p>
+          </details>
+          <details>
+            <summary>Can it change my ECS services by accident?</summary>
+            <p>AWS connections start read-only, and in that mode every create, update, stop or delete call is refused before it leaves the app. When you switch read-only off, each change still asks for confirmation, and deleting a service or scaling it to zero asks you to type its name. For extra safety, connect with a role that only has read permissions.</p>
           </details>
           <details>
             <summary>What does the AI Assistant send, and where?</summary>
@@ -691,7 +727,7 @@ k8sconsole</code></pre>
         <span>© 2026 K8sConsole. All rights reserved.</span>
         <a href="#download">Download</a>
         <a href="#faq">FAQ</a>
-        <p class="legal">Kubernetes® is a registered trademark of The Linux Foundation. Claude is a trademark of Anthropic, PBC. Other product names are trademarks of their respective owners. K8sConsole is an independent product, not affiliated with or endorsed by them.</p>
+        <p class="legal">Kubernetes® is a registered trademark of The Linux Foundation. Amazon Web Services, AWS and Amazon ECS are trademarks of Amazon.com, Inc. or its affiliates. Claude is a trademark of Anthropic, PBC. Other product names are trademarks of their respective owners. K8sConsole is an independent product, not affiliated with or endorsed by them.</p>
       </div>
     </footer>
   </body>

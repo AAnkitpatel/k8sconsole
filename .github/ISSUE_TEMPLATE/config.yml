@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/AAnkitpatel/k8sconsole/security/advisories/new
+    about: Report security problems privately, never in a public issue.
+  - name: Website and downloads
+    url: https://aankitpatel.github.io/k8sconsole/
+    about: Product overview, download and FAQ.

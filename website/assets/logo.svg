@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="K8sConsole">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="rgb(30, 41, 110)"/><stop offset="1" stop-color="rgb(14, 148, 136)"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <polyline points="118,170 222,256 118,342" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="250" y="318" width="130" height="42" rx="21" fill="#fff"/>
+  <g stroke="rgb(125, 249, 205)" stroke-width="10" stroke-linecap="round"><line x1="356" y1="132" x2="420" y2="172"/><line x1="420" y1="172" x2="358" y2="214"/><line x1="358" y1="214" x2="356" y2="132"/></g>
+  <g fill="rgb(125, 249, 205)"><circle cx="356" cy="132" r="22"/><circle cx="420" cy="172" r="22"/><circle cx="358" cy="214" r="22"/></g>
+</svg>

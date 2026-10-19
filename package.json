@@ -1,0 +1,84 @@
+{
+  "name": "k8sconsole",
+  "productName": "K8sConsole",
+  "version": "1.1.0",
+  "description": "Agent-free desktop console for Kubernetes and Amazon ECS",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://aankitpatel.github.io/k8sconsole/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AAnkitpatel/k8sconsole.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AAnkitpatel/k8sconsole/issues"
+  },
+  "author": {
+    "name": "K8sConsole contributors",
+    "email": "a.ankitpatel01@gmail.com"
+  },
+  "main": "build/out/main/main.js",
+  "scripts": {
+    "build:main": "node build/scripts/build-main.mjs",
+    "build:renderer": "vite build --config build/app/vite.config.ts",
+    "build": "npm run build:main && npm run build:renderer",
+    "start": "npm run build && electron .",
+    "typecheck": "tsc -p build/app/tsconfig.json --noEmit",
+    "lint": "eslint build/app/src tests",
+    "test": "vitest run --config build/app/vitest.config.ts --project unit",
+    "test:integration": "vitest run --config build/app/vitest.config.ts --project integration",
+    "test:e2e": "node tests/e2e/smoke.mjs",
+    "package:deb": "bash build/scripts/package-deb.sh",
+    "test:recovery": "vitest run --config build/app/vitest.config.ts --project recovery"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0",
+    "@aws-sdk/client-cloudwatch": "3.1146.0",
+    "@aws-sdk/client-cloudwatch-logs": "3.1146.0",
+    "@aws-sdk/client-ec2": "3.1146.0",
+    "@aws-sdk/client-ecs": "3.1146.0",
+    "@aws-sdk/client-elastic-load-balancing-v2": "3.1146.0",
+    "@aws-sdk/client-sts": "3.1146.0",
+    "@aws-sdk/credential-providers": "3.1146.0",
+    "@codemirror/lang-json": "6.0.2",
+    "@kubernetes/client-node": "1.4.0",
+    "node-pty": "1.1.0",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@codemirror/lang-yaml": "6.1.2",
+    "@codemirror/lint": "6.8.5",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/theme-one-dark": "6.1.3",
+    "@codemirror/view": "6.38.6",
+    "@electron/asar": "3.4.1",
+    "@electron/fuses": "2.1.3",
+    "@eslint/js": "9.39.1",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.0",
+    "@types/node": "22.18.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "5.2.0",
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
+    "codemirror": "6.0.2",
+    "electron": "43.7.7",
+    "esbuild": "0.28.2",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "globals": "16.4.0",
+    "jsdom": "26.1.0",
+    "playwright-core": "1.55.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.0",
+    "vite": "7.3.6",
+    "vitest": "4.1.11"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "node-pty@1.1.0": true
+  }
+}

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: k8sc-test-chart
+description: Minimal chart for K8sConsole integration tests (ConfigMap only, no images).
+version: 0.1.0
+appVersion: "1.0"
