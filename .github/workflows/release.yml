@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Skip if the release already exists
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then echo "skip=true" >> "$GITHUB_OUTPUT"; echo "Release $GITHUB_REF_NAME already exists; not overwriting it."; fi
+      - name: Check the tag matches package.json
+        if: steps.exists.outputs.skip != 'true'
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - name: Install, test and build
+        if: steps.exists.outputs.skip != 'true'
+        run: |
+          npm ci && node node_modules/electron/install.js
+          npm run typecheck && npm run lint && npm test
+          sudo apt-get update -qq && sudo apt-get install -y -qq fakeroot >/dev/null
+          npm run package:deb
+      - name: Release notes from CHANGELOG.md
+        if: steps.exists.outputs.skip != 'true'
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '$0 ~ "^## \\[" v "\\]" {on=1; next} on && /^## \[/ {exit} on {print}' CHANGELOG.md > notes.md
+          { echo; echo "SHA-256 is in \`k8sconsole_${v}_amd64.deb.sha256\`. Install with \`sudo apt install ./k8sconsole_${v}_amd64.deb\`."; } >> notes.md
+      - name: Publish
+        if: steps.exists.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.deb dist/*.deb.sha256 --title "K8sConsole ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag

@@ -1,0 +1,52 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **don't** include credentials, kubeconfigs, AWS account IDs or cluster names. Security problems go to [SECURITY.md](../blob/main/SECURITY.md), not here.
+  - type: input
+    id: version
+    attributes:
+      label: K8sConsole version
+      description: Help → About, or `dpkg -s k8sconsole | grep Version`
+      placeholder: 1.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Kubernetes, Amazon ECS, Terminal, AI Assistant, Helm, Installation / packaging, Other]
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and desktop
+      placeholder: Ubuntu 24.04, GNOME on Wayland
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error details
+      description: The text from "Copy details" on an error screen, or terminal output when started with `k8sconsole` from a shell.
+      render: text
