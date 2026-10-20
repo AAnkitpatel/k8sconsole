@@ -94,7 +94,8 @@ export function resourcePath(ref: Pick<ResourceRef, 'apiVersion' | 'plural' | 'n
   }
   p += `/${ref.plural}`;
   if (name !== undefined) {
-    if (!isValidName(name) && !/^[a-zA-Z0-9:._-]+$/.test(name)) throw new Error(`Invalid name: ${name}`);
+    // "." and ".." would address the parent path instead of an object (Kubernetes forbids them as path segment names too).
+    if (name === '.' || name === '..' || (!isValidName(name) && !/^[a-zA-Z0-9:._-]+$/.test(name))) throw new Error(`Invalid name: ${name}`);
     p += `/${encodeURIComponent(name)}`;
   }
   if (subresource !== undefined) {

@@ -33,7 +33,14 @@ export function validateManifest(text: string, expected?: { apiVersion?: string;
       issues.push({ message: err.message.split('\n')[0], line: err.linePos?.[0]?.line, severity: 'error' });
     }
     if (doc.errors.length) continue;
-    const value = doc.toJS();
+    let value: unknown;
+    try {
+      // toJS() throws for documents that parse but cannot be resolved, e.g. an alias to a missing anchor ("*x").
+      value = doc.toJS({ maxAliasCount: 100 });
+    } catch (err) {
+      issues.push({ message: `Invalid YAML: ${(err as Error).message.split('\n')[0]}`, severity: 'error' });
+      continue;
+    }
     if (value === null || value === undefined) continue;
     if (typeof value !== 'object' || Array.isArray(value)) {
       issues.push({ message: 'Each YAML document must be a mapping (object).', severity: 'error' });
