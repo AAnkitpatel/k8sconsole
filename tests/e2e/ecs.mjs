@@ -40,7 +40,8 @@ mkdirSync(join(home, '.aws'), { recursive: true });
 // A throwaway profile with fake keys; the app only ever talks to the local stand-in.
 writeFileSync(join(home, '.aws', 'config'), '[profile e2e]\nregion = eu-west-2\n');
 writeFileSync(join(home, '.aws', 'credentials'), '[e2e]\naws_access_key_id = AKIAE2EEXAMPLE\naws_secret_access_key = e2e-not-a-secret\n');
-const env = { ...process.env, HOME: home, K8SC_USER_DATA_DIR: join(tmp, 'userData'), K8SC_ALLOW_MULTIPLE: '1', AWS_ENDPOINT_URL: aws.url, AWS_EC2_METADATA_DISABLED: 'true' };
+// Windows resolves the home folder from USERPROFILE.
+const env = { ...process.env, HOME: home, USERPROFILE: home, K8SC_USER_DATA_DIR: join(tmp, 'userData'), K8SC_ALLOW_MULTIPLE: '1', AWS_ENDPOINT_URL: aws.url, AWS_EC2_METADATA_DISABLED: 'true' };
 for (const k of ['ELECTRON_RUN_AS_NODE', 'WAYLAND_DISPLAY', 'KUBECONFIG', 'AWS_PROFILE', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN', 'AWS_REGION', 'AWS_DEFAULT_REGION', 'AWS_CONFIG_FILE', 'AWS_SHARED_CREDENTIALS_FILE']) delete env[k];
 
 async function launch() {
@@ -191,7 +192,9 @@ try {
     await term.waitFor();
     await win.waitForTimeout(1500);
     await term.click();
-    await win.keyboard.type('echo "bound:$AWS_PROFILE:$AWS_REGION:$K8SC_ECS_CLUSTER"\n');
+    // The default shell is PowerShell on Windows and zsh/bash elsewhere.
+    const probe = process.platform === 'win32' ? 'Write-Output ("bound:" + $env:AWS_PROFILE + ":" + $env:AWS_REGION + ":" + $env:K8SC_ECS_CLUSTER)' : 'echo "bound:$AWS_PROFILE:$AWS_REGION:$K8SC_ECS_CLUSTER"';
+    await win.keyboard.type(probe + '\n');
     await term.getByText('bound:e2e:eu-west-2:shop-prod').waitFor({ timeout: 15000 });
     await win.getByRole('button', { name: 'Hide terminal' }).click();
   });

@@ -35,7 +35,7 @@ check "chrome-sandbox permissions are 0755 or 4755 root-owned" bash -c "stat -c 
 check "file ownership is root" bash -c "test -z \"\$(find /opt/$PKG ! -user root | head -1)\""
 check "license notices shipped" bash -c "test -s /opt/$PKG/THIRD_PARTY_NOTICES.txt && test -s /usr/share/doc/$PKG/copyright"
 check "md5sums verify" dpkg --verify $PKG
-check "terminal: native PTY module unpacked and loadable" bash -c "test -f /opt/$PKG/resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node && ldd /opt/$PKG/resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node | grep -vq 'not found'"
+check "terminal: native PTY module shipped outside the archive and loadable" bash -c "test -f /opt/$PKG/resources/node-pty/lib/index.js && test -f /opt/$PKG/resources/node-pty/build/Release/pty.node && ! ldd /opt/$PKG/resources/node-pty/build/Release/pty.node | grep -q 'not found'"
 check "terminal: zsh bootstrap resources shipped" test -s /opt/$PKG/resources/shell/zsh-autosuggestions.zsh
 check "man page shipped in package (minimal images exclude /usr/share/man on install)" bash -c "dpkg-deb -c '$DEB' | grep -q usr/share/man/man1/$PKG.1.gz"
 

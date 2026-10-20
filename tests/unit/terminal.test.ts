@@ -15,11 +15,11 @@ const hasKubectl = (process.env.PATH ?? '').split(':').some((d) => existsSync(jo
 describe('terminal setup', () => {
   it('resolves shells by preference and availability', () => {
     const all = (p: string) => ['/usr/bin/zsh', '/usr/bin/bash', '/bin/sh'].includes(p);
-    expect(resolveShell('auto', '/usr/bin/bash', all)).toEqual({ path: '/usr/bin/bash', flavor: 'bash' });
-    expect(resolveShell('auto', undefined, all)).toEqual({ path: '/usr/bin/zsh', flavor: 'zsh' });
-    expect(resolveShell('zsh', '/usr/bin/bash', all).flavor).toBe('zsh');
-    expect(resolveShell('zsh', undefined, (p) => p === '/usr/bin/bash').flavor).toBe('bash');
-    expect(resolveShell('auto', undefined, () => false)).toEqual({ path: '/bin/sh', flavor: 'sh' });
+    expect(resolveShell('auto', '/usr/bin/bash', all, 'linux')).toEqual({ path: '/usr/bin/bash', flavor: 'bash' });
+    expect(resolveShell('auto', undefined, all, 'linux')).toEqual({ path: '/usr/bin/zsh', flavor: 'zsh' });
+    expect(resolveShell('zsh', '/usr/bin/bash', all, 'linux').flavor).toBe('zsh');
+    expect(resolveShell('zsh', undefined, (p) => p === '/usr/bin/bash', 'linux').flavor).toBe('bash');
+    expect(resolveShell('auto', undefined, () => false, 'linux')).toEqual({ path: '/bin/sh', flavor: 'sh' });
   });
 
   it('overlay kubeconfig pins context and namespace without credentials', () => {
@@ -155,5 +155,40 @@ describe('workingDir', () => {
     const { workingDir } = await import('../../build/app/src/main/terminal');
     expect(workingDir('/definitely/not/here')).not.toBe('/definitely/not/here');
     expect(workingDir(tmpdir())).toBe(tmpdir());
+  });
+});
+
+describe('cross-platform executables and shells', () => {
+  it('finds Windows executables through PATHEXT and quoted Path entries', async () => {
+    const { findExecutable, envPathOf } = await import('../../build/app/src/main/executables');
+    const files = new Set(['C:\\Tools\\kubectl.exe', 'C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe', 'C:\\bin\\helm.cmd']);
+    const has = (p: string) => files.has(p);
+    const path = 'C:\\Tools;"C:\\Program Files\\Amazon\\AWSCLIV2";C:\\bin;relative\\dir';
+    expect(findExecutable('kubectl', undefined, path, 'win32', has, '.COM;.EXE;.BAT;.CMD')).toBe('C:\\Tools\\kubectl.exe');
+    expect(findExecutable('aws', undefined, path, 'win32', has, '.COM;.EXE;.BAT;.CMD')).toBe('C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe');
+    expect(findExecutable('helm', undefined, path, 'win32', has, '.COM;.EXE;.BAT;.CMD')).toBe('C:\\bin\\helm.cmd');
+    expect(findExecutable('kubectl.exe', undefined, path, 'win32', has)).toBe('C:\\Tools\\kubectl.exe');
+    expect(findExecutable('session-manager-plugin', undefined, path, 'win32', has)).toBeNull();
+    expect(findExecutable('helm', 'C:\\bin\\helm.cmd', '', 'win32', has)).toBe('C:\\bin\\helm.cmd');
+    expect(findExecutable('helm', 'helm.cmd', '', 'win32', has)).toBeNull(); // explicit paths must be absolute
+    expect(envPathOf({ Path: 'C:\\a;C:\\b' }, 'win32')).toBe('C:\\a;C:\\b');
+    expect(envPathOf({ Path: 'x', PATH: '/usr/bin' }, 'linux')).toBe('/usr/bin');
+  });
+
+  it('finds POSIX executables on PATH', async () => {
+    const { findExecutable } = await import('../../build/app/src/main/executables');
+    const has = (p: string) => p === '/opt/homebrew/bin/kubectl';
+    expect(findExecutable('kubectl', undefined, '/usr/bin:/opt/homebrew/bin', 'darwin', has)).toBe('/opt/homebrew/bin/kubectl');
+    expect(findExecutable('kubectl', undefined, '/usr/bin', 'linux', has)).toBeNull();
+  });
+
+  it('picks PowerShell 7, then Windows PowerShell, then cmd on Windows', () => {
+    const env = { Path: 'C:\\Program Files\\PowerShell\\7;C:\\Program Files\\Git\\bin', SystemRoot: 'C:\\Windows', ComSpec: 'C:\\Windows\\system32\\cmd.exe', PATHEXT: '.EXE' };
+    const all = (p: string) => ['C:\\Program Files\\PowerShell\\7\\pwsh.EXE'.replace('.EXE', '.exe'), 'C:\\Program Files\\Git\\bin\\bash.exe', 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'].includes(p);
+    expect(resolveShell('auto', undefined, all, 'win32', env)).toEqual({ path: 'C:\\Program Files\\PowerShell\\7\\pwsh.exe', flavor: 'powershell' });
+    expect(resolveShell('bash', undefined, all, 'win32', env)).toEqual({ path: 'C:\\Program Files\\Git\\bin\\bash.exe', flavor: 'bash' });
+    const noPwsh = (p: string) => p === 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+    expect(resolveShell('auto', undefined, noPwsh, 'win32', env)).toEqual({ path: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', flavor: 'powershell' });
+    expect(resolveShell('zsh', undefined, () => false, 'win32', env)).toEqual({ path: 'C:\\Windows\\system32\\cmd.exe', flavor: 'cmd' });
   });
 });

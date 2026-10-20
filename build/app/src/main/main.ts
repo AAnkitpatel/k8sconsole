@@ -57,13 +57,16 @@ function registerIpc(ctrl: AppController) {
 }
 
 function buildMenu() {
+  const mac = process.platform === 'darwin';
   const template: MenuItemConstructorOptions[] = [
-    { label: 'File', submenu: [{ role: 'quit' }] },
+    ...(mac ? [{ role: 'appMenu' } as MenuItemConstructorOptions] : []),
+    { label: 'File', submenu: [mac ? { role: 'close' } : { role: 'quit' }] },
     { label: 'Edit', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     {
       label: 'View',
       submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }, ...(app.isPackaged ? [] : [{ role: 'toggleDevTools' } as MenuItemConstructorOptions])],
     },
+    ...(mac ? [{ role: 'windowMenu' } as MenuItemConstructorOptions] : []),
     {
       label: 'Help',
       submenu: [
@@ -74,7 +77,7 @@ function buildMenu() {
               type: 'info',
               title: APP_NAME,
               message: `${APP_NAME} ${app.getVersion()}`,
-              detail: `Electron ${process.versions.electron}\nChromium ${process.versions.chrome}\nNode ${process.versions.node}\n\nAn independent, agent-free Kubernetes desktop client.`,
+              detail: `Electron ${process.versions.electron}\nChromium ${process.versions.chrome}\nNode ${process.versions.node}\n\nAn agent-free desktop console for Kubernetes and Amazon ECS.`,
             }),
         },
       ],

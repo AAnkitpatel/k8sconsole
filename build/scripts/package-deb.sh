@@ -23,13 +23,11 @@ if [ ! -x "$ELECTRON_DIST/electron" ]; then
   exit 1
 fi
 
-echo "==> Building application"
-npm run build --silent
-node build/scripts/collect-licenses.mjs >/dev/null
+echo "==> Building application (stage-app.mjs builds, collects licences and stages the app)"
 
 echo "==> Staging package tree"
 rm -rf "$STAGE"
-mkdir -p "$DEST$INSTALL_DIR" "$DEST/usr/bin" "$DEST/usr/share/applications" "$DEST/usr/share/doc/$PKG" "$DEST/DEBIAN" "$STAGE/app"
+mkdir -p "$DEST$INSTALL_DIR" "$DEST/usr/bin" "$DEST/usr/share/applications" "$DEST/usr/share/doc/$PKG" "$DEST/DEBIAN"
 
 cp -a "$ELECTRON_DIST/." "$DEST$INSTALL_DIR/"
 mv "$DEST$INSTALL_DIR/electron" "$DEST$INSTALL_DIR/$PKG"
@@ -37,22 +35,11 @@ rm -f "$DEST$INSTALL_DIR/resources/default_app.asar"
 mv "$DEST$INSTALL_DIR/LICENSE" "$DEST$INSTALL_DIR/LICENSE.electron.txt"
 node build/scripts/flip-fuses.mjs "$DEST$INSTALL_DIR/$PKG"
 
-# Application archive: only compiled output (no sources, tests, or node_modules).
-cp -a build/out/main build/out/preload build/out/renderer "$STAGE/app/"
-mkdir -p "$STAGE/app/out" && mv "$STAGE/app/main" "$STAGE/app/preload" "$STAGE/app/renderer" "$STAGE/app/out/"
-node -e "
-const p = require('./package.json');
-const app = { name: p.name, productName: p.productName, version: p.version, description: p.description, license: p.license, author: p.author, main: 'out/main/main.js' };
-require('fs').writeFileSync(process.argv[1], JSON.stringify(app, null, 2));
-" "$STAGE/app/package.json"
-# node-pty (native PTY for the integrated terminal): JS in the archive, the .node binary unpacked.
+# node-pty (native PTY for the integrated terminal) ships in resources/node-pty, outside the archive.
+node build/scripts/stage-app.mjs linux >/dev/null
 PTY_SRC="$ROOT/node_modules/node-pty"
-PTY_DST="$STAGE/app/node_modules/node-pty"
-mkdir -p "$PTY_DST/lib/shared" "$PTY_DST/build/Release"
-cp "$PTY_SRC/package.json" "$PTY_SRC/LICENSE" "$PTY_DST/"
-find "$PTY_SRC/lib" -maxdepth 2 -name '*.js' ! -name '*.test.js' ! -path '*/worker/*' -printf '%P\n' | while read -r f; do mkdir -p "$PTY_DST/lib/$(dirname "$f")"; cp "$PTY_SRC/lib/$f" "$PTY_DST/lib/$f"; done
-cp "$PTY_SRC/build/Release/pty.node" "$PTY_DST/build/Release/"
-npx --no-install asar pack "$STAGE/app" "$DEST$INSTALL_DIR/resources/app.asar" --unpack "*.node"
+cp -a "$STAGE/node-pty" "$DEST$INSTALL_DIR/resources/node-pty"
+npx --no-install asar pack "$STAGE/app" "$DEST$INSTALL_DIR/resources/app.asar"
 
 # Shell bootstrap resources (sourced by zsh from a real path).
 mkdir -p "$DEST$INSTALL_DIR/resources/shell"
@@ -213,7 +200,7 @@ echo "==> Normalising permissions"
 find "$DEST" -type d -exec chmod 0755 {} +
 find "$DEST$INSTALL_DIR" -type f -exec chmod 0644 {} +
 chmod 0755 "$DEST$INSTALL_DIR/$PKG" "$DEST$INSTALL_DIR/chrome_crashpad_handler" "$DEST$INSTALL_DIR/chrome-sandbox"
-find "$DEST$INSTALL_DIR/resources/app.asar.unpacked" -name '*.node' -exec chmod 0755 {} +
+find "$DEST$INSTALL_DIR/resources/node-pty" -name '*.node' -exec chmod 0755 {} +
 find "$DEST/usr" -type f -exec chmod 0644 {} +
 chmod 0755 "$DEST/DEBIAN/postinst" "$DEST/DEBIAN/postrm"
 (cd "$DEST" && find . -type f ! -path './DEBIAN/*' -printf '%P\0' | sort -z | xargs -0 md5sum > DEBIAN/md5sums)

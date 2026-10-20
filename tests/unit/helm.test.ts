@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { findExecutable, HelmClient } from '../../build/app/src/main/helm';
 
 let dir: string;
@@ -33,7 +33,8 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const args = () => readFileSync(argsLog, 'utf8').trim().split('\n');
 
-describe('HelmClient', () => {
+// The fake helm is a POSIX shell script; Windows cannot execute it (Windows lookup rules are tested in terminal.test.ts).
+describe.skipIf(process.platform === 'win32')('HelmClient', () => {
   const target = { kubeconfigPath: '/tmp/kc; rm -rf /', context: 'ctx $(whoami)' };
 
   it('lists releases across namespaces, passing kubeconfig and context as separate argv entries (no shell)', async () => {
@@ -74,9 +75,9 @@ describe('HelmClient', () => {
   });
 });
 
-describe('findExecutable', () => {
+describe.skipIf(process.platform === 'win32')('findExecutable', () => {
   it('finds executables on PATH and validates explicit paths', () => {
-    expect(findExecutable('helm', undefined, `/nonexistent:${dir}`)).toBe(fake);
+    expect(findExecutable('helm', undefined, `/nonexistent${delimiter}${dir}`)).toBe(fake);
     expect(findExecutable('helm', fake)).toBe(fake);
     expect(findExecutable('helm', 'relative/helm')).toBeNull();
     expect(findExecutable('helm', undefined, '/nonexistent')).toBeNull();
