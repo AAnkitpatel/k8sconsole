@@ -43,11 +43,12 @@ If you change Kubernetes behaviour, also run the integration and UI tests agains
 1. **One change per pull request.** Keep it focused; split refactors from features.
 2. **Branch from `main`** and name the branch after the change, e.g. `fix/ecs-log-tail` or `feat/helm-diff`.
 3. **Tests are required** for bug fixes (a test that fails without the fix) and for new behaviour.
-4. **CI must pass**: type check, lint, unit tests, build and the ECS UI test on Linux, plus unit tests and the ECS UI test on macOS and Windows. A maintainer review is required before merging; `main` is protected.
-5. **Conventional commit messages** in the PR title, which becomes the squash-merge commit: `feat: …`, `fix: …`, `docs: …`, `test: …`, `refactor: …`, `chore: …`, `ci: …`.
-6. **Update docs** (README, docs/, CHANGELOG.md "Unreleased") when behaviour or settings change.
-7. **Dependencies** are pinned to exact versions. Explain why in the PR when you add or upgrade one, and keep `npm audit` clean.
-8. **No secrets or real infrastructure identifiers** in code, tests or screenshots: no access keys, tokens, kubeconfigs, account IDs or cluster names. Tests use AWS's documentation example accounts (`123456789012`, `111122223333`).
+4. **Security checks run on every PR**: CodeQL, dependency review (no new high or critical vulnerabilities) and a production `npm audit`. Fix findings or explain them in the PR.
+5. **CI must pass**: type check, lint, unit tests, build and the ECS UI test on Linux, plus unit tests and the ECS UI test on macOS and Windows. A maintainer review is required before merging; `main` is protected.
+6. **Conventional commit messages** in the PR title, which becomes the squash-merge commit: `feat: …`, `fix: …`, `docs: …`, `test: …`, `refactor: …`, `chore: …`, `ci: …`.
+7. **Update docs** (README, docs/, CHANGELOG.md "Unreleased") when behaviour or settings change.
+8. **Dependencies** are pinned to exact versions. Explain why in the PR when you add or upgrade one, and keep `npm audit` clean.
+9. **No secrets or real infrastructure identifiers** in code, tests or screenshots: no access keys, tokens, kubeconfigs, account IDs or cluster names. Tests use AWS's documentation example accounts (`123456789012`, `111122223333`).
 
 ## Project rules that protect users
 

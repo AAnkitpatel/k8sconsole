@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/AAnkitpatel/k8sconsole/actions/workflows/ci.yml/badge.svg)](https://github.com/AAnkitpatel/k8sconsole/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/AAnkitpatel/k8sconsole)](https://github.com/AAnkitpatel/k8sconsole/releases/latest)
+[![CodeQL](https://github.com/AAnkitpatel/k8sconsole/actions/workflows/codeql.yml/badge.svg)](https://github.com/AAnkitpatel/k8sconsole/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/AAnkitpatel/k8sconsole/badge)](https://scorecard.dev/viewer/?uri=github.com/AAnkitpatel/k8sconsole)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **One desktop console for Kubernetes and Amazon ECS.** K8sConsole connects straight to your Kubernetes clusters from your kubeconfig, and to Amazon ECS with your AWS profiles or IAM role. There's nothing to install and no agents. It brings live resources, maps, monitoring, logs, shells, security checks, access control, Helm and an AI assistant together in one fast desktop app.
@@ -37,7 +39,7 @@ Download from the [latest release](https://github.com/AAnkitpatel/k8sconsole/rel
 | **macOS** (Apple Silicon or Intel) | `K8sConsole-<version>-mac-arm64.dmg` / `-mac-x64.dmg` | Open the `.dmg` and drag K8sConsole to Applications. The app isn't notarized by Apple yet, so the first time right-click it and choose **Open**, or run `xattr -dr com.apple.quarantine /Applications/K8sConsole.app`. |
 | **Windows** 10/11 (x64) | `K8sConsole-<version>-win-x64.exe` (installer) or `.zip` (portable) | Run the installer; it installs for your user only, without admin rights. It isn't code-signed yet, so in the SmartScreen prompt choose **More info → Run anyway**. Remove it from *Settings → Apps*. |
 
-Verify a download against `SHA256SUMS.txt`, for example `sha256sum -c SHA256SUMS.txt --ignore-missing` (Linux), `shasum -a 256 <file>` (macOS) or `Get-FileHash <file>` (Windows).
+Every release includes signed build provenance and a software bill of materials (see [SECURITY.md](SECURITY.md#verify-your-download)). Verify a download against `SHA256SUMS.txt`, for example `sha256sum -c SHA256SUMS.txt --ignore-missing` (Linux), `shasum -a 256 <file>` (macOS) or `Get-FileHash <file>` (Windows).
 
 Optional extras:
 - `kubectl` for the terminal's completion and suggestions
