@@ -17,7 +17,7 @@ Please include the affected version, what an attacker could do, and steps to rep
 Every release is built by the [Release workflow](https://github.com/AAnkitpatel/k8sconsole/actions/workflows/release.yml) on GitHub-hosted runners, and comes with:
 
 - **Checksums:** `SHA256SUMS.txt`. Check with `sha256sum -c SHA256SUMS.txt --ignore-missing` (Linux), `shasum -a 256 <file>` (macOS) or `Get-FileHash <file>` (Windows).
-- **Signed build provenance** ([SLSA](https://slsa.dev) attestations, signed through Sigstore). Proves a file was built from this repository by that workflow: `gh attestation verify <file> --repo AAnkitpatel/k8sconsole`
+- **Signed build provenance** ([SLSA](https://slsa.dev) attestations, signed through Sigstore). Proves a file was built from this repository by that workflow: `gh attestation verify <file> --repo AAnkitpatel/k8sconsole` (GitHub CLI 2.49 or newer). The signed bundle is also attached to the release as `k8sconsole-<version>.intoto.jsonl` for offline verification.
 - **A software bill of materials:** `k8sconsole-<version>.cdx.json` (CycloneDX 1.5). Lists every third-party package that ships in the app, including Electron, with exact versions, licences and hashes. Feed it to a scanner such as `grype sbom:k8sconsole-<version>.cdx.json` or `trivy sbom k8sconsole-<version>.cdx.json`.
 
 ## How the project is protected
