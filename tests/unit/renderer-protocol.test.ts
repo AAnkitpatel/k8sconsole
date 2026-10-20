@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { join, resolve, sep } from 'node:path';
 import { contentTypeFor, resolveRendererFile } from '../../build/app/src/main/renderer-protocol';
 
-const DIR = '/opt/app/resources/app.asar/out/renderer';
+// An absolute path in the platform's own form (C:\…\renderer on Windows).
+const DIR = resolve(sep, 'opt', 'app', 'resources', 'app.asar', 'out', 'renderer');
 
 describe('app:// renderer protocol', () => {
   it('serves files from the renderer directory', () => {
-    expect(resolveRendererFile('app://renderer/index.html', DIR)).toBe(`${DIR}/index.html`);
-    expect(resolveRendererFile('app://renderer/', DIR)).toBe(`${DIR}/index.html`);
-    expect(resolveRendererFile('app://renderer/assets/index-abc.js?x=1#y', DIR)).toBe(`${DIR}/assets/index-abc.js`);
+    expect(resolveRendererFile('app://renderer/index.html', DIR)).toBe(join(DIR, 'index.html'));
+    expect(resolveRendererFile('app://renderer/', DIR)).toBe(join(DIR, 'index.html'));
+    expect(resolveRendererFile('app://renderer/assets/index-abc.js?x=1#y', DIR)).toBe(join(DIR, 'assets', 'index-abc.js'));
   });
   it('never resolves outside the renderer directory, however the path is encoded', () => {
     for (const url of [
@@ -18,7 +20,7 @@ describe('app:// renderer protocol', () => {
       'app://renderer/assets/../../../../etc/passwd',
     ]) {
       const r = resolveRendererFile(url, DIR);
-      expect(r === null || r.startsWith(DIR + '/'), `${url} -> ${r}`).toBe(true);
+      expect(r === null || r.startsWith(DIR + sep), `${url} -> ${r}`).toBe(true);
     }
   });
   it('rejects other hosts/schemes and malformed input', () => {

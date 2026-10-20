@@ -29,7 +29,8 @@
     "test:integration": "vitest run --config build/app/vitest.config.ts --project integration",
     "test:e2e": "node tests/e2e/smoke.mjs",
     "package:deb": "bash build/scripts/package-deb.sh",
-    "test:recovery": "vitest run --config build/app/vitest.config.ts --project recovery"
+    "test:recovery": "vitest run --config build/app/vitest.config.ts --project recovery",
+    "postinstall": "node build/scripts/fix-node-pty.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",

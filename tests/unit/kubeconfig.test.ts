@@ -60,7 +60,7 @@ describe('discoverSources', () => {
       userFolders: [folder],
       managedDir: managed,
     });
-    const byOrigin = Object.fromEntries(sources.map((s) => [s.path.replace(dir, ''), s.origin]));
+    const byOrigin = Object.fromEntries(sources.map((s) => [s.path.replace(dir, '').replaceAll('\\', '/'), s.origin]));
     expect(byOrigin).toEqual({
       '/home/.kube/config': 'default',
       '/env.yaml': 'env',

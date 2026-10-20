@@ -6,6 +6,7 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { execSync } from 'node:child_process';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fixSpawnHelpers } from './fix-node-pty.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const platform = process.argv[2] ?? process.platform;
@@ -40,6 +41,7 @@ const keep = (p) => {
   return false;
 };
 cpSync(src, pty, { recursive: true, filter: keep });
+fixSpawnHelpers(pty);
 for (const required of platform === 'linux' ? ['build/Release/pty.node'] : ['prebuilds']) {
   if (!existsSync(join(pty, required))) throw new Error(`node-pty for ${platform} is missing ${required}`);
 }
