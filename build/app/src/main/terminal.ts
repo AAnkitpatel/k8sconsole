@@ -157,7 +157,12 @@ export class TerminalManager {
     const s = this.sessions.get(id);
     if (!s) return;
     this.sessions.delete(id);
-    rmSync(s.dir, { recursive: true, force: true });
+    // The shell may still be writing (history, completion cache) as it exits: retry, and never let cleanup throw.
+    try {
+      rmSync(s.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {
+      // a leftover per-session temp folder is harmless; the OS clears temp
+    }
   }
 
   stopAll(): void {
