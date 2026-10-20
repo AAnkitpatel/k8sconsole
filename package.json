@@ -1,7 +1,7 @@
 {
   "name": "k8sconsole",
   "productName": "K8sConsole",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Agent-free desktop console for Kubernetes and Amazon ECS",
   "private": true,
   "license": "MIT",
@@ -69,6 +69,7 @@
     "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "eslint-plugin-react-hooks": "5.2.0",
+    "fast-check": "4.10.2",
     "globals": "16.4.0",
     "jsdom": "26.1.0",
     "playwright-core": "1.55.0",

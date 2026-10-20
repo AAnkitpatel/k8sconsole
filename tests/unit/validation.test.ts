@@ -99,3 +99,21 @@ describe('resourcePath', () => {
     for (const c of RESOURCE_CATALOG) expect(() => resourcePath(c, c.namespaced ? 'default' : undefined)).not.toThrow();
   });
 });
+
+describe('validateManifest regressions found by fuzzing', () => {
+  it('reports an alias to a missing anchor instead of throwing', () => {
+    for (const text of ['*!', 'a: *missing', 'apiVersion: v1\nkind: ConfigMap\nmetadata: *nope\n']) {
+      const v = validateManifest(text);
+      expect(v.ok).toBe(false);
+      expect(v.issues.some((i) => i.severity === 'error')).toBe(true);
+    }
+  });
+});
+
+describe('resourcePath regressions found by fuzzing', () => {
+  it('rejects "." and ".." as object names (they would address the parent path)', () => {
+    const deploy = { apiVersion: 'apps/v1', plural: 'deployments', namespaced: true };
+    for (const name of ['.', '..']) expect(() => resourcePath(deploy, 'default', name)).toThrow(/Invalid name/);
+    expect(resourcePath(deploy, 'default', 'web.v2..x')).toBe('/apis/apps/v1/namespaces/default/deployments/web.v2..x');
+  });
+});

@@ -4,8 +4,15 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-20
+
+### Fixed
+- Object names `.` and `..` are rejected when building Kubernetes API paths. Before, they could address the parent API path instead of an object. Found by fuzz testing.
+- The YAML validator (editor, apply, assistant proposals) reports documents with an alias to a missing anchor as invalid YAML instead of throwing. Found by fuzz testing.
+
 ### Security
 - Releases include signed build provenance (SLSA, verifiable with `gh attestation verify`) and a CycloneDX SBOM of everything that ships.
+- Property-based fuzz tests (fast-check) for API path building, the `app://` protocol, the AWS read-only guard, settings and connection input, terminal suggestions and manifest validation.
 - CodeQL code scanning, dependency review on pull requests, a production `npm audit` gate, OpenSSF Scorecard, secret-scanning push protection, and workflow hardening (SHA-pinned actions, least-privilege tokens, no persisted credentials).
 
 ## [1.2.0] - 2026-10-20
@@ -40,7 +47,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
   - logs, pod shells, an integrated terminal, port forwarding
   - Security Scan with fixes, Access (who-can, permission matrix, role editor), Helm, and the AI Assistant
 
-[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.1
 [1.2.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.0
 [1.1.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.1.0
 [1.0.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.0.0
