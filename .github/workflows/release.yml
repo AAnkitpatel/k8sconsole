@@ -22,7 +22,9 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       exists: ${{ steps.v.outputs.exists }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - id: v
         env:
           GH_TOKEN: ${{ github.token }}
@@ -37,8 +39,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -46,17 +50,20 @@ jobs:
         run: |
           npm ci && node node_modules/electron/install.js
           npm run typecheck && npm run lint && npm test
-      - name: Build .deb
+      - name: Build .deb and SBOM
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq fakeroot >/dev/null
           npm run package:deb
+          node build/scripts/sbom.mjs "dist/k8sconsole-${{ needs.version.outputs.version }}.cdx.json"
       - name: Install, launch and uninstall in a clean Ubuntu 24.04 container
         run: |
           docker run --rm --network host -v "$PWD/dist:/pkg:ro" -v "$PWD:/src:ro" -v "$(dirname "$(dirname "$(which node)")")":/node:ro ubuntu:24.04 bash /src/tests/package/validate-deb.sh
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux
-          path: dist/*.deb*
+          path: |
+            dist/*.deb*
+            dist/*.cdx.json
           retention-days: 14
 
   macos:
@@ -64,8 +71,10 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -91,7 +100,7 @@ jobs:
           # The app's helper processes can hold the image for a few seconds after it quits.
           for i in 1 2 3 4 5; do hdiutil detach "$mnt" && exit 0; sleep 3; done
           hdiutil detach -force "$mnt"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: macos
           path: |
@@ -109,8 +118,10 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -134,7 +145,7 @@ jobs:
           Start-Process -Wait -FilePath (Join-Path $env:LOCALAPPDATA 'Programs\K8sConsole\Uninstall K8sConsole.exe') -ArgumentList '/S'
           Start-Sleep -Seconds 5
           if (Test-Path $exe) { throw "uninstall left $exe behind" }
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows
           path: |
@@ -148,16 +159,22 @@ jobs:
     needs: [version, linux, macos, windows]
     if: needs.version.outputs.exists != 'true' && (github.event_name == 'push' || inputs.publish)
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: out
           merge-multiple: true
       - name: Checksums and release notes
         run: |
           v=${{ needs.version.outputs.version }}
-          (cd out && sha256sum *.deb *.dmg *.zip *.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          (cd out && sha256sum *.deb *.dmg *.zip *.exe *.cdx.json > SHA256SUMS.txt && cat SHA256SUMS.txt)
           awk -v v="$v" '$0 ~ "^## \\[" v "\\]" {on=1; next} on && /^## \[/ {exit} on {print}' CHANGELOG.md > notes.md
           cat >> notes.md <<NOTES
 
@@ -170,14 +187,26 @@ jobs:
           | macOS, Intel | \`K8sConsole-${v}-mac-x64.dmg\` |
           | Windows 10/11, x64 | \`K8sConsole-${v}-win-x64.exe\` (installer) or \`.zip\` (portable) |
 
-          Checksums are in \`SHA256SUMS.txt\`.
+          Checksums are in \`SHA256SUMS.txt\`. The software bill of materials is \`k8sconsole-${v}.cdx.json\` (CycloneDX).
+
+          **Verify a download** was built by this repository's release workflow (signed build provenance):
+          \`gh attestation verify <file> --repo AAnkitpatel/k8sconsole\`
 
           **First launch on macOS:** the app is not notarized by Apple yet. Open it with right-click → Open, or run \`xattr -dr com.apple.quarantine /Applications/K8sConsole.app\`.
           **First launch on Windows:** the installer is not code-signed yet. In the SmartScreen prompt choose *More info* → *Run anyway*.
           NOTES
+      - name: Signed build provenance for every file
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            out/*.deb
+            out/*.dmg
+            out/*.zip
+            out/*.exe
+            out/*.cdx.json
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           v=${{ needs.version.outputs.version }}
-          gh release create "v$v" out/*.deb out/*.dmg out/*.zip out/*.exe out/SHA256SUMS.txt --title "K8sConsole $v" --notes-file notes.md --target "$GITHUB_SHA"
+          gh release create "v$v" out/*.deb out/*.dmg out/*.zip out/*.exe out/*.cdx.json out/SHA256SUMS.txt --title "K8sConsole $v" --notes-file notes.md --target "$GITHUB_SHA"
