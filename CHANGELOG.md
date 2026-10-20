@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Security
+- Releases include signed build provenance (SLSA, verifiable with `gh attestation verify`) and a CycloneDX SBOM of everything that ships.
+- CodeQL code scanning, dependency review on pull requests, a production `npm audit` gate, OpenSSF Scorecard, secret-scanning push protection, and workflow hardening (SHA-pinned actions, least-privilege tokens, no persisted credentials).
+
 ## [1.2.0] - 2026-10-20
 
 ### Added
