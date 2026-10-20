@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>K8sConsole — one desktop console for Kubernetes and Amazon ECS</title>
-    <meta name="description" content="K8sConsole is an agent-free desktop console for Kubernetes and Amazon ECS: live maps, monitoring, logs, shells, security scanning, access control, Helm, ECS services and tasks with CloudWatch logs, and an AI assistant that proposes fixes you review." />
+    <meta name="description" content="K8sConsole is a free, open-source desktop console for Kubernetes and Amazon ECS on Linux, macOS and Windows: live maps, monitoring, logs, shells, security scanning, access control, Helm, ECS services and tasks with CloudWatch logs, and an AI assistant that proposes fixes you review." />
     <meta property="og:title" content="K8sConsole — Kubernetes and Amazon ECS in one desktop app" />
     <meta property="og:description" content="Agent-free. Live maps, monitoring, security scan, access control, Helm and an AI assistant — in one desktop app." />
     <meta property="og:image" content="assets/screens/overview.png" />
@@ -367,6 +367,12 @@
         gap: 28px;
         align-items: start;
       }
+      .dl-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 18px 0;
+      }
       .download > *,
       .feature > * {
         min-width: 0;
@@ -482,7 +488,7 @@
           <p class="lead">K8sConsole puts live maps, monitoring, logs, shells, security checks, access control, Helm and an AI assistant into one fast desktop app, for Kubernetes and Amazon ECS. It connects straight from your kubeconfig and your AWS profiles, and installs nothing in your clusters.</p>
           <div class="cta">
             <a class="btn btn-primary" href="#download"
-              ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" /></svg> Download for Linux</a
+              ><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" /></svg> Download</a
             >
             <a class="btn" href="#features">See what's inside</a>
           </div>
@@ -665,22 +671,30 @@
         <div class="wrap download">
           <div>
             <h2>Download K8sConsole</h2>
-            <p class="section-lead">Version 1.1.0 for Linux x86-64 (Ubuntu 22.04+, Debian 12+).</p>
-            <p><a class="btn btn-primary" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.1.0/k8sconsole_1.1.0_amd64.deb">Download .deb (≈ 89 MB)</a></p>
-            <pre class="cmd" aria-label="Install command"><code>sudo apt install ./k8sconsole_1.1.0_amd64.deb
+            <p class="section-lead">Version 1.2.0 for Linux, macOS and Windows. Free and open source (MIT).</p>
+            <div class="dl-list">
+              <a class="btn btn-primary" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.2.0/k8sconsole_1.2.0_amd64.deb">Linux (.deb)</a>
+              <a class="btn btn-primary" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.2.0/K8sConsole-1.2.0-mac-arm64.dmg">macOS Apple Silicon</a>
+              <a class="btn" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.2.0/K8sConsole-1.2.0-mac-x64.dmg">macOS Intel</a>
+              <a class="btn btn-primary" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.2.0/K8sConsole-1.2.0-win-x64.exe">Windows installer</a>
+              <a class="btn" href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.2.0/K8sConsole-1.2.0-win-x64.zip">Windows portable .zip</a>
+            </div>
+            <pre class="cmd" aria-label="Linux install command"><code>sudo apt install ./k8sconsole_1.2.0_amd64.deb
 k8sconsole</code></pre>
-            <p class="muted">Optional: <code>kubectl</code> for terminal completion, <code>zsh</code> for inline suggestions, <code>helm</code> 3 for Helm features, the <code>aws</code> CLI for the AWS shell and ECS Exec.</p>
+            <p class="muted">Optional: <code>kubectl</code> for terminal completion, <code>zsh</code> for inline suggestions (Linux and macOS), <code>helm</code> 3 for Helm features, the <code>aws</code> CLI for the AWS shell and ECS Exec.</p>
           </div>
           <div class="card">
             <dl class="meta">
               <dt>Version</dt>
-              <dd>1.1.0</dd>
-              <dt>Package</dt>
-              <dd>k8sconsole_1.1.0_amd64.deb</dd>
-              <dt>SHA-256</dt>
-              <dd><code id="sha">ef17b9f8fba79e75c2c1fe48f0e6aec4aaacecd495107a7e5b0f1ae1aaaabc42</code></dd>
-              <dt>Verify</dt>
-              <dd><code>sha256sum k8sconsole_1.1.0_amd64.deb</code></dd>
+              <dd>1.2.0 · <a href="https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.0">release notes</a></dd>
+              <dt>Linux</dt>
+              <dd>Ubuntu 22.04+ / Debian 12+, x86-64</dd>
+              <dt>macOS</dt>
+              <dd>Apple Silicon or Intel. Not notarized yet: the first time, right-click the app and choose <b>Open</b>.</dd>
+              <dt>Windows</dt>
+              <dd>Windows 10/11, x64. Not code-signed yet: in SmartScreen choose <b>More info → Run anyway</b>.</dd>
+              <dt>Checksums</dt>
+              <dd><a href="https://github.com/AAnkitpatel/k8sconsole/releases/download/v1.2.0/SHA256SUMS.txt">SHA256SUMS.txt</a>, e.g. <code>sha256sum -c SHA256SUMS.txt --ignore-missing</code></dd>
             </dl>
           </div>
         </div>
@@ -715,7 +729,7 @@ k8sconsole</code></pre>
           </details>
           <details>
             <summary>Which platforms are supported?</summary>
-            <p>Linux on x86-64 today, as a .deb package for Ubuntu and Debian.</p>
+            <p>Linux (a .deb for Ubuntu and Debian, x86-64), macOS (Apple Silicon and Intel) and Windows 10/11 (x64). Every installer is built and tested on its own operating system before each release.</p>
           </details>
         </div>
       </section>
