@@ -16,7 +16,7 @@ npm run package:deb                       # Linux → dist/k8sconsole_<version>_
 node build/scripts/package.mjs            # macOS → .dmg/.zip (arm64 + x64); Windows → installer + .zip (x64)
 ```
 
-Installers are built on the operating system they target; the *Release* workflow does this on GitHub-hosted Linux, macOS and Windows runners and tests each installer before publishing. `build/scripts/stage-app.mjs` prepares the app archive and the platform's `node-pty` binaries for both packaging paths. node-pty ships in `resources/node-pty`, outside `app.asar`, so its helper programs (macOS `spawn-helper`, Windows ConPTY) are real files.
+Installers are built on the operating system they target. macOS signing and notarization are set up as described in [MACOS-SIGNING.md](MACOS-SIGNING.md). the *Release* workflow does this on GitHub-hosted Linux, macOS and Windows runners and tests each installer before publishing. `build/scripts/stage-app.mjs` prepares the app archive and the platform's `node-pty` binaries for both packaging paths. node-pty ships in `resources/node-pty`, outside `app.asar`, so its helper programs (macOS `spawn-helper`, Windows ConPTY) are real files.
 
 `package:deb` bundles the app into `app.asar` (the native `node-pty` binary is unpacked next to it), hardens the Electron fuses, regenerates `THIRD_PARTY_NOTICES.txt`, and builds the package with `fakeroot dpkg-deb`. The icon set is generated with `python3 -I build/scripts/make-icon.py build/assets`.
 

@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+- macOS builds use the hardened runtime, and the Release workflow signs with a Developer ID and notarizes as soon as the signing secrets are configured (see `docs/MACOS-SIGNING.md`).
+- Clearer first-launch instructions for macOS 15, where right-click → Open no longer bypasses Gatekeeper.
+
 ## [1.2.1] - 2026-10-20
 
 ### Fixed
