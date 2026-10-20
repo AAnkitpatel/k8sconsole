@@ -482,19 +482,18 @@ describe('AWS workspace', () => {
     expect(() => w.require()).toThrow(/Not connected/);
   });
 
-  it('only offers ECS Exec on writable profile connections with the CLI and plugin', async () => {
+  it('offers ECS Exec on writable connections without any local aws CLI or plugin', async () => {
     const ecs = fakeSender({ DescribeTasksCommand: () => ({ tasks: [awsTask('t1')] }) });
     const sts = fakeSender({ GetCallerIdentityCommand: () => ({ Account: ACCT, Arn: 'a' }) });
-    const w = new AwsWorkspace(deps({ clients: (r) => clients({ ecs, sts }, r.readOnly) }));
+    const w = new AwsWorkspace(deps({ findExecutable: () => null, clients: (r) => clients({ ecs, sts }, r.readOnly) }));
     await w.connect({ mode: 'profile', profile: 'dev', region: 'eu-west-2' });
     expect((await w.execInfo(CLUSTER, awsTask('t1').taskArn, 'app')).reason).toMatch(/read-only/);
-    await w.connect({ mode: 'profile', profile: 'dev', region: 'eu-west-2', readOnly: false });
-    const info = await w.execInfo(CLUSTER, awsTask('t1').taskArn, 'app');
-    expect(info.available).toBe(true);
-    expect(info.command).toEqual(['/usr/bin/aws', 'ecs', 'execute-command', '--region', 'eu-west-2', '--profile', 'dev', '--cluster', CLUSTER, '--task', awsTask('t1').taskArn, '--container', 'app', '--interactive', '--command', '/bin/sh']);
-    const noPlugin = new AwsWorkspace(deps({ findExecutable: (n: string) => (n === 'aws' ? '/usr/bin/aws' : null), clients: (r) => clients({ ecs, sts }, r.readOnly) }));
-    await noPlugin.connect({ mode: 'profile', profile: 'dev', region: 'eu-west-2', readOnly: false });
-    expect((await noPlugin.execInfo(CLUSTER, awsTask('t1').taskArn, 'app')).reason).toMatch(/Session Manager plugin/);
+    await w.connect({ mode: 'default', region: 'eu-west-2', readOnly: false, assumeRoleArn: `arn:aws:iam::${ACCT}:role/Ops` });
+    expect(await w.execInfo(CLUSTER, awsTask('t1').taskArn, 'app')).toEqual({ available: true });
+    const stopped = fakeSender({ DescribeTasksCommand: () => ({ tasks: [awsTask('t1', { enableExecuteCommand: false })] }) });
+    const w2 = new AwsWorkspace(deps({ clients: (r) => clients({ ecs: stopped, sts }, r.readOnly) }));
+    await w2.connect({ mode: 'default', region: 'eu-west-2', readOnly: false });
+    expect((await w2.execInfo(CLUSTER, awsTask('t1').taskArn, 'app')).reason).toMatch(/not enabled/);
   });
 
   it('binds terminals to the profile and region without credentials', async () => {

@@ -45,7 +45,7 @@ Optional extras:
 - `kubectl` for the terminal's completion and suggestions
 - `zsh` for inline command suggestions (Linux and macOS; on Windows the terminal uses PowerShell)
 - `helm` 3 for the Helm features
-- the `aws` CLI v2 for the AWS shell, and AWS's Session Manager plugin for ECS Exec (everything else in the ECS workspace works without them)
+- the `aws` CLI v2 for the *AWS shell* terminal tab. ECS Exec shells are built in and need neither the aws CLI nor the Session Manager plugin.
 
 Your settings stay in `~/.config/K8sConsole/` (Linux), `~/Library/Application Support/K8sConsole/` (macOS) or `%APPDATA%\K8sConsole\` (Windows) after uninstalling; delete that folder to remove them.
 
@@ -82,7 +82,7 @@ Your settings stay in `~/.config/K8sConsole/` (Linux), `~/Library/Application Su
 | ECS: "AWS SSO session expired" | Run `aws sso login --profile <name>` (for example in the terminal), then connect again. |
 | ECS: "requires an MFA code" | Use a profile with cached session credentials or SSO; MFA prompts are not supported yet. |
 | ECS: cluster CPU chart is the services' average | Fargate publishes utilization per service. Turn on Container Insights for task-level metrics. |
-| ECS Exec is unavailable | It needs a read-write connection with a profile (not an app-assumed role), the `aws` CLI, the Session Manager plugin, and ECS Exec enabled on the service. The Shell tab says which one is missing. |
+| ECS Exec is unavailable | It needs a read-write connection, ECS Exec enabled on the service (then new tasks), a task IAM role that allows `ssmmessages:*`, and network access from this computer to `ssmmessages.<region>.amazonaws.com`. The Shell tab says which one is missing. Clusters that encrypt exec sessions with a KMS key are not supported by the built-in shell yet. |
 
 ## Contributing
 

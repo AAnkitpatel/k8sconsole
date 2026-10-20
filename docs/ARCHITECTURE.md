@@ -64,4 +64,4 @@ Pure, unit-tested modules used by both processes:
 | Helm through the CLI | Uses Helm's own release storage and chart handling. |
 | AWS SDK v3 with the standard credential chain | Profiles, SSO, roles and instance credentials behave exactly as in the aws CLI; `AWS_ENDPOINT_URL` works for emulators and tests. |
 | Read-only guard as SDK middleware | One enforcement point below every ECS call, so a missed UI check cannot send a change. |
-| ECS Exec through the aws CLI | The Session Manager protocol stays in AWS's own plugin. |
+| Built-in ECS Exec (`aws/ssm-session.ts`) | ECS `ExecuteCommand` plus the Session Manager data-channel protocol over a WebSocket: no aws CLI or plugin to install, and it works with app-assumed roles. KMS-encrypted sessions are not supported yet. |

@@ -4,6 +4,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-20
+
+### Added
+- **Built-in ECS Exec.** Container shells connect directly through ECS `ExecuteCommand` and the Session Manager protocol, so the aws CLI and Session Manager plugin are no longer needed. This also works with IAM roles assumed in the app. Tested live against Fargate.
+
 ### Changed
 - macOS builds use the hardened runtime, and the Release workflow signs with a Developer ID and notarizes as soon as the signing secrets are configured (see `docs/MACOS-SIGNING.md`).
 - Clearer first-launch instructions for macOS 15, where right-click → Open no longer bypasses Gatekeeper.
@@ -51,7 +56,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
   - logs, pod shells, an integrated terminal, port forwarding
   - Security Scan with fixes, Access (who-can, permission matrix, role editor), Helm, and the AI Assistant
 
-[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.3.0
 [1.2.1]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.1
 [1.2.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.0
 [1.1.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.1.0

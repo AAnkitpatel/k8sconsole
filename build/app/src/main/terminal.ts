@@ -21,9 +21,17 @@ export interface TerminalExtras {
   command?: { file: string; args: string[] };
 }
 
+/** What a terminal tab talks to: a local PTY, or a remote channel such as an ECS Exec session. */
+export interface TerminalChannel {
+  write(data: string): void;
+  resize(cols: number, rows: number): void;
+  kill(): void;
+}
+
 interface Session {
-  pty: IPty;
-  dir: string;
+  pty: TerminalChannel | IPty;
+  /** Per-session temp folder (local shells only). */
+  dir?: string;
 }
 
 /** First existing directory among the user's home candidates (a shell cannot start in a missing cwd). */
@@ -142,6 +150,42 @@ export class TerminalManager {
     }
   }
 
+  /**
+   * Opens a terminal tab backed by a remote channel. `open` receives the callbacks for output and exit and returns the channel.
+   * Output is batched like PTY output.
+   */
+  startRemote(info: Omit<TerminalSessionInfo, 'sessionId'>, open: (io: { data: (d: string) => void; exit: (error?: string) => void }) => TerminalChannel): TerminalSessionInfo {
+    const sessionId = randomUUID();
+    let buf = '';
+    let timer: NodeJS.Timeout | null = null;
+    const flush = () => {
+      timer = null;
+      if (buf) {
+        const data = buf;
+        buf = '';
+        this.emit({ sessionId, data });
+      }
+    };
+    let ended = false;
+    const channel = open({
+      data: (d) => {
+        buf += d;
+        if (buf.length > 64 * 1024) flush();
+        else if (!timer) timer = setTimeout(flush, 12);
+      },
+      exit: (error) => {
+        if (ended) return;
+        ended = true;
+        if (timer) clearTimeout(timer);
+        flush();
+        this.sessions.delete(sessionId);
+        this.emit({ sessionId, exit: true, error });
+      },
+    });
+    if (!ended) this.sessions.set(sessionId, { pty: channel });
+    return { sessionId, ...info };
+  }
+
   stop(id: string): void {
     const s = this.sessions.get(id);
     if (!s) return;
@@ -157,6 +201,7 @@ export class TerminalManager {
     const s = this.sessions.get(id);
     if (!s) return;
     this.sessions.delete(id);
+    if (!s.dir) return;
     // The shell may still be writing (history, completion cache) as it exits: retry, and never let cleanup throw.
     try {
       rmSync(s.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
