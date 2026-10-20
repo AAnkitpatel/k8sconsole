@@ -7,10 +7,11 @@
 // "create-and-delete-selftest-resources". It creates and then deletes its own resources (named k8sconsole-selftest-*),
 // and checks that every pre-existing service in that cluster is unchanged afterwards.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DeleteTaskDefinitionsCommand, DescribeServicesCommand, ListServicesCommand } from '@aws-sdk/client-ecs';
+import { DeleteTaskDefinitionsCommand, DescribeServicesCommand, ListServicesCommand, ListTaskDefinitionsCommand } from '@aws-sdk/client-ecs';
 import { createAwsClients, ReadOnlyError } from '../../build/app/src/main/aws/session';
 import { EcsApi } from '../../build/app/src/main/aws/ecs';
 import { EcsLogTails } from '../../build/app/src/main/aws/logs';
+import { SsmSession } from '../../build/app/src/main/aws/ssm-session';
 import { arnName, type EcsLogChunk } from '../../build/app/src/shared/ecs';
 
 const PROFILE = process.env.K8SC_AWS_PROFILE;
@@ -193,5 +194,58 @@ describe.skipIf(!PROFILE || !WRITE_CLUSTER)('Amazon ECS writes (live AWS, approv
     await api.deleteService(cluster, service, false);
     const gone = await api.getService(cluster, service);
     expect(['DRAINING', 'INACTIVE']).toContain(gone.status);
+  }, 600_000);
+});
+
+// Live ECS Exec through the built-in Session Manager client (no aws CLI / plugin).
+// Requires the approved write cluster plus a task role that allows ECS Exec (ssmmessages:*): K8SC_AWS_EXEC_TASK_ROLE.
+const EXEC_ROLE = process.env.K8SC_AWS_EXEC_TASK_ROLE;
+describe.skipIf(!PROFILE || !WRITE_CLUSTER || !EXEC_ROLE)('ECS Exec, built-in client (live AWS, approved cluster only)', () => {
+  const clients = createAwsClients({ mode: 'profile', profile: PROFILE!, region: REGION, readOnly: false }, 'test');
+  const api = new EcsApi(clients);
+  const cluster = WRITE_CLUSTER!;
+  const family = `${PREFIX}-task`;
+  const registered: string[] = [];
+  let taskArn: string | undefined;
+
+  afterAll(async () => {
+    if (taskArn) await api.stopTask(cluster, taskArn, 'k8sconsole exec self-test cleanup').catch(() => undefined);
+    // Remove every revision of the self-test family (including leftovers from earlier runs).
+    const all = (await clients.ecs.send(new ListTaskDefinitionsCommand({ familyPrefix: family, status: 'ACTIVE' }))).taskDefinitionArns ?? [];
+    for (const arn of all) await api.deregisterTaskDefinition(arn).catch(() => undefined);
+    const inactive = (await clients.ecs.send(new ListTaskDefinitionsCommand({ familyPrefix: family, status: 'INACTIVE' }))).taskDefinitionArns ?? [];
+    if (inactive.length) await clients.ecs.send(new DeleteTaskDefinitionsCommand({ taskDefinitions: inactive.slice(0, 10) })).catch((err: unknown) => console.error('cleanup: delete task definitions failed', err));
+  }, 300_000);
+
+  it('opens a shell in a running task and round-trips commands', async () => {
+    const before = JSON.stringify((await api.listServices(cluster)).map((s) => [s.name, s.desired, s.taskDefinition, s.deployments.map((d) => d.id)]));
+    const template = (await api.listServices(cluster)).find((s) => !s.name.startsWith(PREFIX) && s.launchType === 'FARGATE' && s.network);
+    const reg = await api.registerTaskDefinition(
+      JSON.stringify({ family, taskRoleArn: EXEC_ROLE, requiresCompatibilities: ['FARGATE'], networkMode: 'awsvpc', cpu: '256', memory: '512', containerDefinitions: [{ name: 'shell', image: 'public.ecr.aws/docker/library/busybox:1.36', command: ['sleep', '900'], essential: true, linuxParameters: { initProcessEnabled: true } }] }),
+    );
+    registered.push(reg.arn);
+    const [t] = await api.runTask({ clusterArn: cluster, taskDefinition: reg.arn, count: 1, launchType: 'FARGATE', network: { subnets: template!.network!.subnets, securityGroups: template!.network!.securityGroups, assignPublicIp: 'ENABLED' }, enableExecuteCommand: true });
+    taskArn = t.arn;
+    await until('exec agent running', async () => {
+      const task = await api.getTask(cluster, t.arn);
+      return task.lastStatus === 'RUNNING' && task.containers[0]?.execAgent === 'RUNNING' ? task : undefined;
+    }, 300_000, 8000);
+
+    const session = await api.executeCommand(cluster, t.arn, 'shell', '/bin/sh');
+    let out = '';
+    let closed: string | undefined | null = null;
+    const ssm = new SsmSession({ streamUrl: session.streamUrl, token: session.tokenValue, cols: 120, rows: 40, onData: (d) => (out += d), onClose: (e) => (closed = e ?? '') }).start();
+    await until('shell prompt', async () => out.length > 0 || closed !== null, 60_000, 500);
+    expect(closed).toBeNull();
+    ssm.input('echo K8SC-$((6*7))\n');
+    await until('command output', async () => /K8SC-42/.test(out), 30_000, 300);
+    ssm.resize(160, 50);
+    ssm.input('stty size; uname -s\n');
+    await until('resize + uname', async () => /50 160/.test(out) && /Linux/.test(out), 30_000, 300);
+    ssm.input('exit\n');
+    await until('session closed by exit', async () => closed !== null, 30_000, 300);
+    expect(closed).toBe('');
+    const after = JSON.stringify((await api.listServices(cluster)).map((s) => [s.name, s.desired, s.taskDefinition, s.deployments.map((d) => d.id)]));
+    expect(after).toBe(before);
   }, 600_000);
 });

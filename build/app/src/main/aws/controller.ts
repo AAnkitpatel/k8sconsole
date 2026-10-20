@@ -18,7 +18,8 @@ import { createAwsClients, describeAwsError, type AwsClients } from './session';
 import { EcsApi } from './ecs';
 import { EcsLogTails } from './logs';
 import { buildAwsSuggestions } from '../terminal-setup';
-import type { TerminalExtras } from '../terminal';
+import type { TerminalChannel, TerminalExtras } from '../terminal';
+import { SsmSession, type SocketLike } from './ssm-session';
 
 export interface AwsWorkspaceDeps {
   home: string;
@@ -30,6 +31,8 @@ export interface AwsWorkspaceDeps {
   remember: (req: AwsConnectRequest) => void;
   /** Tests inject fake clients. */
   clients?: (req: AwsConnectRequest) => AwsClients;
+  /** Tests inject a fake WebSocket for ECS Exec sessions. */
+  socket?: (url: string) => SocketLike;
 }
 
 /** Validates an untrusted connect request from the renderer. */
@@ -132,23 +135,35 @@ export class AwsWorkspace {
     return { env, suggestions: buildAwsSuggestions({ cluster: clusterName, services, logGroups }) };
   }
 
-  /** Whether an ECS Exec shell can be opened for a task container, and the aws CLI command that opens it. */
+  /** Whether an ECS Exec shell can be opened for a task container. The app connects itself (no aws CLI or plugin needed). */
   async execInfo(cluster: string, taskArn: string, container: string): Promise<EcsExecInfo> {
     const ecs = this.require();
     const req = this.request!;
     if (req.readOnly) return { available: false, reason: 'This connection is read-only. ECS Exec opens an interactive shell in a running container, so reconnect with read-only switched off to use it.' };
-    if (req.assumeRoleArn) return { available: false, reason: 'ECS Exec runs through the aws CLI, which cannot reuse a role assumed by the app. Add a profile with role_arn to ~/.aws/config and connect with that profile.' };
-    const aws = this.deps.findExecutable('aws');
-    if (!aws) return { available: false, reason: 'The aws CLI v2 was not found on PATH.' };
-    if (!this.deps.findExecutable('session-manager-plugin')) return { available: false, reason: 'The AWS Session Manager plugin is not installed. Install "session-manager-plugin" from AWS to use ECS Exec.' };
     const task = await ecs.getTask(cluster, taskArn);
     if (task.lastStatus !== 'RUNNING') return { available: false, reason: `The task is ${task.lastStatus.toLowerCase()}, not running.` };
     if (!task.enableExecuteCommand) return { available: false, reason: 'ECS Exec is not enabled for this task. Enable it on the service, then start new tasks (force a new deployment).' };
     const c = task.containers.find((x) => x.name === container);
     if (!c) return { available: false, reason: 'Container not found in this task.' };
     if (c.execAgent && c.execAgent !== 'RUNNING') return { available: false, reason: `The ECS Exec agent in this container is ${c.execAgent.toLowerCase()}.` };
-    const command = [aws, 'ecs', 'execute-command', '--region', req.region, ...(req.profile ? ['--profile', req.profile] : []), '--cluster', task.clusterArn, '--task', task.arn, '--container', container, '--interactive', '--command', '/bin/sh'];
-    return { available: true, command };
+    return { available: true };
+  }
+
+  /** Opens an interactive ECS Exec shell over a built-in Session Manager connection. */
+  async openExec(cluster: string, taskArn: string, container: string, cols: number, rows: number, io: { data: (d: string) => void; exit: (error?: string) => void }): Promise<TerminalChannel> {
+    const info = await this.execInfo(cluster, taskArn, container);
+    if (!info.available) throw new Error(info.reason ?? 'ECS Exec is not available');
+    const session = await this.require().executeCommand(cluster, taskArn, container, '/bin/sh');
+    const ssm = new SsmSession({
+      streamUrl: session.streamUrl,
+      token: session.tokenValue,
+      cols,
+      rows,
+      onData: io.data,
+      onClose: io.exit,
+      socket: this.deps.socket,
+    }).start();
+    return { write: (d) => ssm.input(d), resize: (c, r) => ssm.resize(c, r), kill: () => ssm.close() };
   }
 
   // Validation helpers shared by the IPC handlers.

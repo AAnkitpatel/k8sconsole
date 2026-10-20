@@ -14,7 +14,7 @@ import { PortForwardManager } from './kube/portforward';
 import { readMetrics } from './kube/metrics';
 import { findExecutable, HelmClient } from './helm';
 import { MonitorCollector } from './kube/monitor';
-import { TerminalManager, type ClusterBinding } from './terminal';
+import { TerminalManager, type ClusterBinding, type TerminalChannel } from './terminal';
 import { buildSuggestions } from './terminal-setup';
 import Anthropic from '@anthropic-ai/sdk';
 import { randomUUID } from 'node:crypto';
@@ -568,12 +568,27 @@ export class AppController {
     'ecs:deleteService': (c, s, force) => this.aws.require().deleteService(AwsWorkspace.cluster(c), String(s), !!force),
     'ecs:execInfo': (c, t, container) => this.aws.execInfo(AwsWorkspace.cluster(c), String(t), String(container)),
     'ecs:execStart': async (c, t, container, cols, rows) => {
-      const info = await this.aws.execInfo(AwsWorkspace.cluster(c), String(t), String(container));
-      if (!info.available || !info.command) throw new Error(info.reason ?? 'ECS Exec is not available');
-      const [file, ...args] = info.command;
-      const extras = await this.aws.terminalExtras();
-      const session = this.terminals.start({ cols: Number(cols), rows: Number(rows), shell: 'auto', bindToCluster: false }, null, { env: extras.env, command: { file, args } });
-      return { ...session, context: `ECS Exec ${arnName(String(t)).slice(0, 8)}/${String(container)}` };
+      const cluster = AwsWorkspace.cluster(c);
+      const task = String(t);
+      const name = String(container);
+      // Fail before opening a tab when the shell cannot start (read-only connection, task not running, …).
+      const info = await this.aws.execInfo(cluster, task, name);
+      if (!info.available) throw new Error(info.reason ?? 'ECS Exec is not available');
+      let pending: Promise<TerminalChannel> | null = null;
+      const session = this.terminals.startRemote({ shell: 'ECS Exec', context: `ECS Exec ${arnName(task).slice(0, 8)}/${name}`, kubectlFound: false, autosuggest: 'none' }, (io) => {
+        // The channel connects asynchronously; input typed meanwhile is queued by forwarding through the promise.
+        pending = this.aws.openExec(cluster, task, name, Number(cols) || 80, Number(rows) || 24, io).catch((err) => {
+          io.exit(err instanceof Error ? err.message : String(err));
+          throw err;
+        });
+        pending.catch(() => undefined);
+        return {
+          write: (d) => void pending?.then((ch) => ch.write(d), () => undefined),
+          resize: (cc, rr) => void pending?.then((ch) => ch.resize(cc, rr), () => undefined),
+          kill: () => void pending?.then((ch) => ch.kill(), () => undefined),
+        };
+      });
+      return session;
     },
 
     'app:info': () => this.deps.appInfo(),

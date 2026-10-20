@@ -199,7 +199,7 @@ function ExecTab({ t, onExec }: { t: EcsTask; onExec: (x: ExecTarget) => void })
   const info = useLoad(() => call('ecs:execInfo', cluster, t.arn, container), [cluster, t.arn, container]);
   return (
     <div>
-      <p className="muted">ECS Exec opens an interactive shell inside a running container through AWS Systems Manager, using the aws CLI and the Session Manager plugin on this machine.</p>
+      <p className="muted">ECS Exec opens an interactive shell inside a running container through AWS Systems Manager. K8sConsole connects directly with your AWS connection: no aws CLI or Session Manager plugin needed.</p>
       {t.containers.length > 1 && (
         <label className="field">
           <span>Container</span>
@@ -217,7 +217,6 @@ function ExecTab({ t, onExec }: { t: EcsTask; onExec: (x: ExecTarget) => void })
           <button className="btn btn-primary" onClick={() => onExec({ cluster, task: t.arn, container, title: `${t.serviceName ?? t.id.slice(0, 8)}/${container}` })}>
             Open shell in terminal
           </button>
-          <code className="muted">{info.data.command?.slice(1).join(' ')}</code>
         </div>
       )}
     </div>

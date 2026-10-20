@@ -22,7 +22,7 @@
 
 ## Amazon ECS read-only mode
 - AWS connections start read-only. Three layers enforce it: the UI disables change actions, the ECS service layer refuses write operations, and a middleware on every AWS SDK client rejects any operation that is not a Describe/List/Get-style call before it is signed or sent.
-- ECS Exec (an interactive shell in a container) counts as a change and is only offered on read-write connections.
+- ECS Exec (an interactive shell in a container) counts as a change and is only offered on read-write connections. The shell connects directly from the main process to Session Manager (ECS `ExecuteCommand` returns a short-lived stream URL and token); keystrokes and output never pass through the aws CLI or a local plugin, and session logging configured on the cluster still applies.
 - ECS names, ARNs, subnet and security-group IDs, revisions, counts and command overrides are validated in the main process before any call.
 
 ## Changes to clusters

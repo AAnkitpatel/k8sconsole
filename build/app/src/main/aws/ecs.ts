@@ -7,6 +7,7 @@ import {
   DescribeServicesCommand,
   DescribeTaskDefinitionCommand,
   DescribeTasksCommand,
+  ExecuteCommandCommand,
   ListClustersCommand,
   ListContainerInstancesCommand,
   ListServicesCommand,
@@ -526,6 +527,17 @@ export class EcsApi {
     if (Object.keys(input).length === 2) throw new Error('Nothing to change');
     const r = await this.aws.ecs.send(new UpdateServiceCommand(input as any));
     return toService(r.service);
+  }
+
+  /** Starts an ECS Exec session; the returned stream URL and token open a Session Manager data channel. */
+  async executeCommand(cluster: string, task: string, container: string, command = '/bin/sh'): Promise<{ sessionId: string; streamUrl: string; tokenValue: string }> {
+    this.writable('ExecuteCommand');
+    if (!isEcsArn(task, 'task')) throw new Error('Invalid task');
+    if (!/^[A-Za-z0-9_.-]{1,255}$/.test(container)) throw new Error('Invalid container name');
+    const r = await this.aws.ecs.send(new ExecuteCommandCommand({ cluster: this.cluster(cluster), task, container, interactive: true, command }));
+    const s = r.session;
+    if (!s?.streamUrl || !s.tokenValue) throw new Error('ECS did not return a session');
+    return { sessionId: s.sessionId, streamUrl: s.streamUrl, tokenValue: s.tokenValue };
   }
 
   async stopTask(cluster: string, task: string, reason: string): Promise<EcsTask> {
