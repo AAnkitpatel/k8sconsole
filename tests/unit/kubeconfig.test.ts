@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, statSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { contextsFromSource, discoverSources, importKubeconfigYaml, kubeConfigForContext, parseContextId } from '../../build/app/src/main/kube/kubeconfig';
 import { SettingsStore, sanitizeSettings } from '../../build/app/src/main/settings';
 
@@ -55,12 +55,12 @@ describe('discoverSources', () => {
 
     const sources = discoverSources({
       home,
-      envKubeconfig: `${envFile}:${join(home, '.kube', 'config')}:${join(dir, 'missing')}`,
+      envKubeconfig: [envFile, join(home, '.kube', 'config'), join(dir, 'missing')].join(delimiter),
       userFiles: [envFile, join(dir, 'gone.yaml')],
       userFolders: [folder],
       managedDir: managed,
     });
-    const byOrigin = Object.fromEntries(sources.map((s) => [s.path.replace(dir, ''), s.origin]));
+    const byOrigin = Object.fromEntries(sources.map((s) => [s.path.replace(dir, '').replaceAll('\\', '/'), s.origin]));
     expect(byOrigin).toEqual({
       '/home/.kube/config': 'default',
       '/env.yaml': 'env',
@@ -115,7 +115,7 @@ describe('importKubeconfigYaml', () => {
     const b = importKubeconfigYaml(kubeconfigYaml(), '../../Evil Name!', managed);
     expect(a.path).toBe(join(managed, 'evil-name.yaml'));
     expect(b.path).toBe(join(managed, 'evil-name-2.yaml'));
-    expect(statSync(a.path).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(statSync(a.path).mode & 0o777).toBe(0o600);
     expect(a.contexts).toBe(1);
   });
   it('rejects invalid kubeconfigs', () => {
@@ -139,7 +139,7 @@ describe('settings', () => {
     const file = join(dir, 'cfg', 'settings.json');
     const store = new SettingsStore(file);
     store.update({ theme: 'light', logTailLines: 1000 });
-    expect(statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32') expect(statSync(file).mode & 0o777).toBe(0o600);
     expect(JSON.parse(readFileSync(file, 'utf8')).theme).toBe('light');
     expect(new SettingsStore(file).get().logTailLines).toBe(1000);
   });

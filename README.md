@@ -6,7 +6,7 @@
 
 **One desktop console for Kubernetes and Amazon ECS.** K8sConsole connects straight to your Kubernetes clusters from your kubeconfig, and to Amazon ECS with your AWS profiles or IAM role. There's nothing to install and no agents. It brings live resources, maps, monitoring, logs, shells, security checks, access control, Helm and an AI assistant together in one fast desktop app.
 
-> **Download:** [latest release](https://github.com/AAnkitpatel/k8sconsole/releases/latest) (`.deb`, Linux x86-64, with SHA-256) · **Website:** [aankitpatel.github.io/k8sconsole](https://aankitpatel.github.io/k8sconsole/)
+> **Download:** [latest release](https://github.com/AAnkitpatel/k8sconsole/releases/latest) for Linux (`.deb`), macOS (Apple Silicon and Intel `.dmg`) and Windows (installer or portable `.zip`), with SHA-256 checksums · **Website:** [aankitpatel.github.io/k8sconsole](https://aankitpatel.github.io/k8sconsole/)
 
 ## Highlights
 
@@ -29,25 +29,30 @@
 
 ## Install
 
-```bash
-sudo apt install ./k8sconsole_1.1.0_amd64.deb
-k8sconsole        # or open "K8sConsole" from your applications menu
-```
+Download from the [latest release](https://github.com/AAnkitpatel/k8sconsole/releases/latest):
 
-Supported systems are Ubuntu 22.04 or newer and Debian 12 or newer, on x86-64. Optional extras:
+| Platform | File | How |
+|---|---|---|
+| **Linux** (Ubuntu 22.04+, Debian 12+, x86-64) | `k8sconsole_<version>_amd64.deb` | `sudo apt install ./k8sconsole_<version>_amd64.deb`, then run `k8sconsole` or open it from the applications menu. Remove with `sudo apt remove k8sconsole`. |
+| **macOS** (Apple Silicon or Intel) | `K8sConsole-<version>-mac-arm64.dmg` / `-mac-x64.dmg` | Open the `.dmg` and drag K8sConsole to Applications. The app isn't notarized by Apple yet, so the first time right-click it and choose **Open**, or run `xattr -dr com.apple.quarantine /Applications/K8sConsole.app`. |
+| **Windows** 10/11 (x64) | `K8sConsole-<version>-win-x64.exe` (installer) or `.zip` (portable) | Run the installer; it installs for your user only, without admin rights. It isn't code-signed yet, so in the SmartScreen prompt choose **More info → Run anyway**. Remove it from *Settings → Apps*. |
+
+Verify a download against `SHA256SUMS.txt`, for example `sha256sum -c SHA256SUMS.txt --ignore-missing` (Linux), `shasum -a 256 <file>` (macOS) or `Get-FileHash <file>` (Windows).
+
+Optional extras:
 - `kubectl` for the terminal's completion and suggestions
-- `zsh` for inline command suggestions
+- `zsh` for inline command suggestions (Linux and macOS; on Windows the terminal uses PowerShell)
 - `helm` 3 for the Helm features
 - the `aws` CLI v2 for the AWS shell, and AWS's Session Manager plugin for ECS Exec (everything else in the ECS workspace works without them)
 
-Uninstall with `sudo apt remove k8sconsole`. Your settings in `~/.config/K8sConsole/` stay; delete that folder to remove them.
+Your settings stay in `~/.config/K8sConsole/` (Linux), `~/Library/Application Support/K8sConsole/` (macOS) or `%APPDATA%\K8sConsole\` (Windows) after uninstalling; delete that folder to remove them.
 
 ## Configuration
 
 | What | Where |
 |---|---|
 | Clusters | Clusters view → *Add file*, *Add folder*, *Paste YAML*. `$KUBECONFIG` is read at launch. |
-| Settings | Settings view; stored in `~/.config/K8sConsole/settings.json` (owner-only permissions) |
+| Settings | Settings view; stored in `settings.json` in the settings folder above (owner-only permissions on Linux and macOS) |
 | AI Assistant | Open ✦ Assistant and add a Claude API key. It's encrypted with your OS keyring. Alternatively set `ANTHROPIC_API_KEY`. Choose the model, effort and log access in Settings. |
 | Helm | `helm` on `PATH`, or set its path in Settings |
 | Amazon ECS | Switch the sidebar to *Amazon ECS* and connect. Profiles come from `~/.aws/config` and `~/.aws/credentials` (or `AWS_CONFIG_FILE` / `AWS_SHARED_CREDENTIALS_FILE`). The last connection (profile, region, role, read-only) is remembered; credentials never are. |

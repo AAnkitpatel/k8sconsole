@@ -1,5 +1,6 @@
 import { accessSync, constants } from 'node:fs';
-import { basename } from 'node:path';
+import { basename, win32 } from 'node:path';
+import { envPathOf, findExecutable, type Platform } from './executables';
 import { stringify } from 'yaml';
 import type { ShellKind } from '../shared/types';
 
@@ -12,8 +13,26 @@ export function isExecutable(path: string): boolean {
   }
 }
 
+export type ShellFlavor = 'zsh' | 'bash' | 'sh' | 'powershell' | 'cmd';
+
+/** Windows: PowerShell 7 (pwsh), then Windows PowerShell, then cmd.exe. Git Bash is used when "bash" is chosen and found. */
+export function resolveWindowsShell(kind: ShellKind, env: Record<string, string | undefined>, exists?: (p: string) => boolean): { path: string; flavor: ShellFlavor } {
+  const find = (n: string) => findExecutable(n, undefined, envPathOf(env, 'win32'), 'win32', exists, env.PATHEXT);
+  if (kind === 'bash') {
+    const bash = find('bash');
+    if (bash) return { path: bash, flavor: 'bash' };
+  }
+  const pwsh = find('pwsh');
+  if (pwsh) return { path: pwsh, flavor: 'powershell' };
+  const sysRoot = env.SystemRoot || env.SYSTEMROOT || 'C:\\Windows';
+  const legacy = win32.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  if (!exists || exists(legacy)) return { path: legacy, flavor: 'powershell' };
+  return { path: env.ComSpec || env.COMSPEC || win32.join(sysRoot, 'System32', 'cmd.exe'), flavor: 'cmd' };
+}
+
 /** Picks the shell binary: zsh preferred for 'auto' when it is the user's shell or available. */
-export function resolveShell(kind: ShellKind, envShell: string | undefined, exists: (p: string) => boolean = isExecutable): { path: string; flavor: 'zsh' | 'bash' | 'sh' } {
+export function resolveShell(kind: ShellKind, envShell: string | undefined, exists: (p: string) => boolean = isExecutable, platform: Platform = process.platform, env: Record<string, string | undefined> = process.env): { path: string; flavor: ShellFlavor } {
+  if (platform === 'win32') return resolveWindowsShell(kind, env, exists === isExecutable ? undefined : exists);
   const zsh = ['/usr/bin/zsh', '/bin/zsh'].find(exists);
   const bash = ['/usr/bin/bash', '/bin/bash'].find(exists);
   if (kind === 'zsh' && zsh) return { path: zsh, flavor: 'zsh' };
@@ -149,6 +168,13 @@ export function buildAwsSuggestions(i: { cluster?: string; services: string[]; l
   for (const g of i.logGroups.slice(0, 40)) out.push(`aws logs tail ${g} --follow`, `aws logs tail ${g} --since 1h`);
   return [...new Set(out)].filter((l) => /^[\w ./:=,\-+<>|]+$/.test(l));
 }
+
+/** PowerShell start-up: kubectl alias, completion when available, and the same banner as zsh/bash. */
+export const PWSH_INIT = [
+  "if (Get-Command kubectl -ErrorAction SilentlyContinue) { Set-Alias -Name k -Value kubectl; try { kubectl completion powershell | Out-String | Invoke-Expression } catch {} }",
+  "if ($env:K8SC_CONTEXT) { Write-Host ('K8sConsole  context ' + $env:K8SC_CONTEXT + '  namespace ' + ($(if ($env:K8SC_NAMESPACE) { $env:K8SC_NAMESPACE } else { 'default' }))) -ForegroundColor Cyan }",
+  "if ($env:K8SC_AWS_REGION) { Write-Host ('K8sConsole  AWS ' + $(if ($env:AWS_PROFILE) { $env:AWS_PROFILE } else { 'default credentials' }) + '  region ' + $env:K8SC_AWS_REGION) -ForegroundColor Cyan }",
+].join('; ');
 
 export function zshFiles(): Record<string, string> {
   return { '.zshenv': ZSHENV, '.zshrc': ZSHRC };

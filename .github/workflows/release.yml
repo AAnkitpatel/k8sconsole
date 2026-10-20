@@ -1,14 +1,39 @@
 name: Release
 
+# Builds and tests installers for Linux, macOS and Windows, then publishes them as a GitHub release.
+# Runs on a version tag (v1.2.3). "Run workflow" builds and tests without publishing unless "publish" is ticked.
 on:
   push:
     tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a GitHub release for the version in package.json
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      exists: ${{ steps.v.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF_NAME" != "v$v" ]; then echo "Tag $GITHUB_REF_NAME does not match package.json version $v"; exit 1; fi
+          if gh release view "v$v" >/dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; echo "Release v$v already exists; installers are built and tested but not re-published."; fi
+
+  linux:
+    needs: version
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -17,30 +42,142 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Skip if the release already exists
-        id: exists
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then echo "skip=true" >> "$GITHUB_OUTPUT"; echo "Release $GITHUB_REF_NAME already exists; not overwriting it."; fi
-      - name: Check the tag matches package.json
-        if: steps.exists.outputs.skip != 'true'
-        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
-      - name: Install, test and build
-        if: steps.exists.outputs.skip != 'true'
+      - name: Install, check and test
         run: |
           npm ci && node node_modules/electron/install.js
           npm run typecheck && npm run lint && npm test
+      - name: Build .deb
+        run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq fakeroot >/dev/null
           npm run package:deb
-      - name: Release notes from CHANGELOG.md
-        if: steps.exists.outputs.skip != 'true'
+      - name: Install, launch and uninstall in a clean Ubuntu 24.04 container
         run: |
-          v="${GITHUB_REF_NAME#v}"
+          docker run --rm --network host -v "$PWD/dist:/pkg:ro" -v "$PWD:/src:ro" -v "$(dirname "$(dirname "$(which node)")")":/node:ro ubuntu:24.04 bash /src/tests/package/validate-deb.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: dist/*.deb*
+          retention-days: 14
+
+  macos:
+    needs: version
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install and test
+        run: |
+          npm ci && node node_modules/electron/install.js
+          npm test
+      - name: Build .dmg and .zip (Apple Silicon and Intel)
+        run: node build/scripts/package.mjs
+      - name: Verify signature and hardening
+        run: |
+          for app in dist/mac-arm64/K8sConsole.app dist/mac/K8sConsole.app; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+            npx --no-install @electron/fuses read --app "$app" | tee fuses.txt
+            grep -q 'RunAsNode is Disabled' fuses.txt && grep -q 'EnableEmbeddedAsarIntegrityValidation is Enabled' fuses.txt
+          done
+          test -f dist/mac-arm64/K8sConsole.app/Contents/Resources/node-pty/prebuilds/darwin-arm64/spawn-helper
+      - name: Test the app from the mounted .dmg (Apple Silicon)
+        run: |
+          v=${{ needs.version.outputs.version }}
+          mnt=$(hdiutil attach "dist/K8sConsole-$v-mac-arm64.dmg" -nobrowse -readonly | tail -1 | awk -F'\t' '{print $NF}')
+          node tests/e2e/ecs.mjs --exe "$mnt/K8sConsole.app/Contents/MacOS/K8sConsole"
+          # The app's helper processes can hold the image for a few seconds after it quits.
+          for i in 1 2 3 4 5; do hdiutil detach "$mnt" && exit 0; sleep 3; done
+          hdiutil detach -force "$mnt"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+            dist/*.zip
+            dist/*.zip.sha256
+          retention-days: 14
+
+  windows:
+    needs: version
+    runs-on: windows-2025
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install and test
+        run: |
+          npm ci
+          node node_modules/electron/install.js
+          npm test
+      - name: Build installer and .zip (x64)
+        run: node build/scripts/package.mjs
+      - name: Install silently, test the installed app, uninstall
+        run: |
+          $v = '${{ needs.version.outputs.version }}'
+          Start-Process -Wait -FilePath "dist\K8sConsole-$v-win-x64.exe" -ArgumentList '/S'
+          $exe = Join-Path $env:LOCALAPPDATA 'Programs\K8sConsole\K8sConsole.exe'
+          if (-not (Test-Path $exe)) { throw "not installed at $exe" }
+          if (-not (Test-Path (Join-Path $env:LOCALAPPDATA 'Programs\K8sConsole\resources\node-pty\third_party\conpty'))) { throw 'ConPTY missing' }
+          npx --no-install @electron/fuses read --app $exe
+          node tests/e2e/ecs.mjs --exe $exe
+          if ($LASTEXITCODE -ne 0) { throw "ECS UI test failed" }
+          Start-Process -Wait -FilePath (Join-Path $env:LOCALAPPDATA 'Programs\K8sConsole\Uninstall K8sConsole.exe') -ArgumentList '/S'
+          Start-Sleep -Seconds 5
+          if (Test-Path $exe) { throw "uninstall left $exe behind" }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: |
+            dist/*.exe
+            dist/*.exe.sha256
+            dist/*.zip
+            dist/*.zip.sha256
+          retention-days: 14
+
+  publish:
+    needs: [version, linux, macos, windows]
+    if: needs.version.outputs.exists != 'true' && (github.event_name == 'push' || inputs.publish)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: out
+          merge-multiple: true
+      - name: Checksums and release notes
+        run: |
+          v=${{ needs.version.outputs.version }}
+          (cd out && sha256sum *.deb *.dmg *.zip *.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
           awk -v v="$v" '$0 ~ "^## \\[" v "\\]" {on=1; next} on && /^## \[/ {exit} on {print}' CHANGELOG.md > notes.md
-          { echo; echo "SHA-256 is in \`k8sconsole_${v}_amd64.deb.sha256\`. Install with \`sudo apt install ./k8sconsole_${v}_amd64.deb\`."; } >> notes.md
+          cat >> notes.md <<NOTES
+
+          ## Downloads
+
+          | Platform | File |
+          |---|---|
+          | Linux (Ubuntu 22.04+ / Debian 12+, x86-64) | \`k8sconsole_${v}_amd64.deb\`: \`sudo apt install ./k8sconsole_${v}_amd64.deb\` |
+          | macOS, Apple Silicon | \`K8sConsole-${v}-mac-arm64.dmg\` |
+          | macOS, Intel | \`K8sConsole-${v}-mac-x64.dmg\` |
+          | Windows 10/11, x64 | \`K8sConsole-${v}-win-x64.exe\` (installer) or \`.zip\` (portable) |
+
+          Checksums are in \`SHA256SUMS.txt\`.
+
+          **First launch on macOS:** the app is not notarized by Apple yet. Open it with right-click → Open, or run \`xattr -dr com.apple.quarantine /Applications/K8sConsole.app\`.
+          **First launch on Windows:** the installer is not code-signed yet. In the SmartScreen prompt choose *More info* → *Run anyway*.
+          NOTES
       - name: Publish
-        if: steps.exists.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.deb dist/*.deb.sha256 --title "K8sConsole ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag
+        run: |
+          v=${{ needs.version.outputs.version }}
+          gh release create "v$v" out/*.deb out/*.dmg out/*.zip out/*.exe out/SHA256SUMS.txt --title "K8sConsole $v" --notes-file notes.md --target "$GITHUB_SHA"

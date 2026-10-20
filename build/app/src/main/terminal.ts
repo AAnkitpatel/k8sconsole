@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import type { IPty } from 'node-pty';
 import type { TerminalData, TerminalSessionInfo, TerminalStartRequest } from '../shared/types';
-import { BASHRC, isExecutable, overlayKubeconfig, resolveShell, shellEnv, zshFiles } from './terminal-setup';
+import { BASHRC, PWSH_INIT, overlayKubeconfig, resolveShell, shellEnv, zshFiles } from './terminal-setup';
+import { envPathOf, findExecutable } from './executables';
 
 export interface ClusterBinding {
   kubeconfigPath: string;
@@ -23,10 +24,6 @@ export interface TerminalExtras {
 interface Session {
   pty: IPty;
   dir: string;
-}
-
-function findOnPath(name: string, pathVar = process.env.PATH ?? ''): boolean {
-  return pathVar.split(':').some((d) => d && isExecutable(join(d, name)));
 }
 
 /** First existing directory among the user's home candidates (a shell cannot start in a missing cwd). */
@@ -56,9 +53,12 @@ export class TerminalManager {
 
   private loadPty(): typeof import('node-pty').spawn {
     if (this.opts.spawn) return this.opts.spawn;
-    // Loaded lazily: the native module is only needed once a terminal is opened.
+    // Loaded lazily: the native module is only needed once a terminal is opened. Packages ship it in resources/node-pty,
+    // outside the archive, so its helper programs and worker scripts (macOS spawn-helper, Windows ConPTY worker) are real files.
+    const resources = (process as { resourcesPath?: string }).resourcesPath;
+    const shipped = resources ? join(resources, 'node-pty') : '';
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return (require('node-pty') as typeof import('node-pty')).spawn;
+    return (require(shipped && existsSync(shipped) ? shipped : 'node-pty') as typeof import('node-pty')).spawn;
   }
 
   start(req: TerminalStartRequest, binding: ClusterBinding | null, extras: TerminalExtras = {}): TerminalSessionInfo {
@@ -70,7 +70,7 @@ export class TerminalManager {
     if (binding) {
       const overlay = join(dir, 'kubeconfig-overlay.yaml');
       writeFileSync(overlay, overlayKubeconfig(binding.context, binding.namespace), { mode: 0o600 });
-      extra.KUBECONFIG = `${overlay}:${binding.kubeconfigPath}`;
+      extra.KUBECONFIG = `${overlay}${delimiter}${binding.kubeconfigPath}`;
       extra.K8SC_CONTEXT = binding.context.name;
       extra.K8SC_NAMESPACE = binding.namespace ?? '';
     }
@@ -84,13 +84,17 @@ export class TerminalManager {
       extra.ZDOTDIR = dir;
       extra.K8SC_AUTOSUGGEST_PLUGIN = this.opts.autosuggestPlugin;
       args = ['-i'];
-    } else if (shell.flavor === 'bash') {
+    } else if (shell.flavor === 'bash' && process.platform !== 'win32') {
       writeFileSync(join(dir, 'bashrc'), BASHRC, { mode: 0o600 });
       args = ['--rcfile', join(dir, 'bashrc'), '-i'];
+    } else if (shell.flavor === 'powershell') {
+      args = ['-NoLogo', '-NoExit', '-Command', PWSH_INIT];
     }
     // K8SC_* variables set above are re-added after the generic filter strips inherited ones.
     const env = { ...shellEnv(process.env, {}), ...extra };
-    const pty = this.loadPty()(shell.path, args, { name: 'xterm-256color', cols: clamp(req.cols, 80), rows: clamp(req.rows, 24), cwd: workingDir(this.opts.home), env });
+    // Windows: the bundled ConPTY avoids node-pty's fork() helper, which a hardened build (RunAsNode off) cannot run.
+    const platformOpts = process.platform === 'win32' ? { useConptyDll: true } : {};
+    const pty = this.loadPty()(shell.path, args, { name: 'xterm-256color', cols: clamp(req.cols, 80), rows: clamp(req.rows, 24), cwd: workingDir(this.opts.home), env, ...platformOpts });
     this.sessions.set(sessionId, { pty, dir });
 
     let buf = '';
@@ -121,7 +125,7 @@ export class TerminalManager {
       shell: shell.path,
       context: binding?.context.name,
       namespace: binding?.namespace,
-      kubectlFound: findOnPath('kubectl', env.PATH),
+      kubectlFound: !!findExecutable('kubectl', undefined, envPathOf(env)),
       autosuggest: shell.flavor !== 'zsh' ? 'none' : userAutosuggest ? 'user' : 'bundled',
     };
   }
@@ -153,7 +157,12 @@ export class TerminalManager {
     const s = this.sessions.get(id);
     if (!s) return;
     this.sessions.delete(id);
-    rmSync(s.dir, { recursive: true, force: true });
+    // The shell may still be writing (history, completion cache) as it exits: retry, and never let cleanup throw.
+    try {
+      rmSync(s.dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    } catch {
+      // a leftover per-session temp folder is harmless; the OS clears temp
+    }
   }
 
   stopAll(): void {
