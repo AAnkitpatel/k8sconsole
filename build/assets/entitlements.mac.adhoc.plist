@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- V8 (JavaScript) compiles code at run time. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <!-- Ad-hoc builds only: ad-hoc signatures carry no Team ID, so library validation would reject the app's own frameworks.
+       Developer ID builds (entitlements.mac.plist) keep library validation on. -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+</dict>
+</plist>

@@ -17,6 +17,13 @@ execFileSync(process.execPath, [join(root, 'build/scripts/stage-app.mjs'), platf
 copyFileSync(join(root, 'LICENSE'), join(root, 'build/stage/LICENSE.txt'));
 
 const { build, Platform } = require('electron-builder');
+
+// macOS: with a Developer ID certificate (CSC_LINK) and notarization credentials (App Store Connect API key or Apple ID),
+// the app is signed, notarized and stapled, so Gatekeeper opens it without a warning. Without them it is ad-hoc signed.
+const hasCert = !!(process.env.CSC_LINK || process.env.CSC_NAME);
+const hasNotaryKey = !!((process.env.APPLE_API_KEY && process.env.APPLE_API_KEY_ID && process.env.APPLE_API_ISSUER) || (process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD && process.env.APPLE_TEAM_ID));
+const macSigned = platform === 'darwin' && hasCert;
+if (platform === 'darwin') console.log(`macOS signing: ${macSigned ? `Developer ID${hasNotaryKey ? ' + notarization' : ' (no notarization credentials)'}` : 'ad-hoc (no Developer ID certificate configured)'}`);
 const pkg = require('./package.json');
 const electronVersion = require('electron/package.json').version;
 
@@ -52,11 +59,14 @@ const config = {
       { target: 'dmg', arch: ['arm64', 'x64'] },
       { target: 'zip', arch: ['arm64', 'x64'] },
     ],
-    // Ad-hoc signature (no Apple Developer certificate): required for Apple Silicon to run the app at all.
-    identity: '-',
-    hardenedRuntime: false,
+    // Hardened runtime is required for notarization and is used for ad-hoc builds too, so both paths are tested.
+    hardenedRuntime: true,
+    entitlements: macSigned ? 'build/assets/entitlements.mac.plist' : 'build/assets/entitlements.mac.adhoc.plist',
+    entitlementsInherit: macSigned ? 'build/assets/entitlements.mac.plist' : 'build/assets/entitlements.mac.adhoc.plist',
+    // Ad-hoc signature when no certificate is configured: Apple Silicon refuses to run unsigned code.
+    ...(macSigned ? {} : { identity: '-' }),
     gatekeeperAssess: false,
-    notarize: false,
+    notarize: macSigned && hasNotaryKey,
   },
   dmg: { writeUpdateInfo: false },
   win: {

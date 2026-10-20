@@ -690,7 +690,7 @@ k8sconsole</code></pre>
               <dt>Linux</dt>
               <dd>Ubuntu 22.04+ / Debian 12+, x86-64</dd>
               <dt>macOS</dt>
-              <dd>Apple Silicon or Intel. Not notarized yet: the first time, right-click the app and choose <b>Open</b>.</dd>
+              <dd>Apple Silicon or Intel. Not notarized by Apple yet, so the first launch says Apple “could not verify” the app: click <b>Done</b>, then <b>System Settings → Privacy &amp; Security → Open Anyway</b>. Once per version.</dd>
               <dt>Windows</dt>
               <dd>Windows 10/11, x64. Not code-signed yet: in SmartScreen choose <b>More info → Run anyway</b>.</dd>
               <dt>Checksums</dt>
@@ -726,6 +726,10 @@ k8sconsole</code></pre>
           <details>
             <summary>Will it change anything without asking?</summary>
             <p>No. Every change shows a confirmation, edits support server-side dry runs, and destructive actions ask you to type the resource name.</p>
+          </details>
+          <details>
+            <summary>macOS says it “could not verify K8sConsole is free of malware”. Is it safe?</summary>
+            <p>macOS shows this for every app that isn't notarized by Apple; it doesn't mean anything was found. K8sConsole is open source and built by a public GitHub workflow. Every download has a checksum, a software bill of materials and signed build provenance you can verify (<code>gh attestation verify &lt;file&gt; --repo AAnkitpatel/k8sconsole</code>). To open it: click <b>Done</b>, go to <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. Or run <code>xattr -dr com.apple.quarantine /Applications/K8sConsole.app</code>. Notarized builds are planned, and they won't show the warning.</p>
           </details>
           <details>
             <summary>Which platforms are supported?</summary>
