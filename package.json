@@ -1,7 +1,7 @@
 {
   "name": "k8sconsole",
   "productName": "K8sConsole",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Agent-free desktop console for Kubernetes and Amazon ECS",
   "private": true,
   "license": "MIT",
@@ -29,7 +29,8 @@
     "test:integration": "vitest run --config build/app/vitest.config.ts --project integration",
     "test:e2e": "node tests/e2e/smoke.mjs",
     "package:deb": "bash build/scripts/package-deb.sh",
-    "test:recovery": "vitest run --config build/app/vitest.config.ts --project recovery"
+    "test:recovery": "vitest run --config build/app/vitest.config.ts --project recovery",
+    "postinstall": "node build/scripts/fix-node-pty.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
@@ -64,6 +65,7 @@
     "@xterm/xterm": "5.5.0",
     "codemirror": "6.0.2",
     "electron": "43.7.7",
+    "electron-builder": "26.17.0",
     "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "eslint-plugin-react-hooks": "5.2.0",

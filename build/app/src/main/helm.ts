@@ -1,24 +1,11 @@
 import { execFile } from 'node:child_process';
-import { accessSync, constants, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { delimiter, isAbsolute, join } from 'node:path';
+import { join } from 'node:path';
 import { isValidName } from '../shared/resources';
 import type { HelmChartVersion, HelmHistoryEntry, HelmInstallRequest, HelmInstallResult, HelmRelease, HelmRepo } from '../shared/types';
 
-/** Locates an executable on PATH (or validates an explicit absolute path). */
-export function findExecutable(name: string, explicit: string | undefined, envPath = process.env.PATH ?? ''): string | null {
-  const candidates = explicit ? [explicit] : envPath.split(delimiter).filter(Boolean).map((d) => join(d, name));
-  for (const c of candidates) {
-    if (!isAbsolute(c)) continue;
-    try {
-      accessSync(c, constants.X_OK);
-      return c;
-    } catch {
-      // keep looking
-    }
-  }
-  return null;
-}
+export { findExecutable } from './executables';
 
 const RELEASE_NAME = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 

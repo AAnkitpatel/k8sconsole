@@ -291,7 +291,12 @@ try {
 } finally {
   await app.close().catch(() => undefined);
   await claude?.close();
-  rmSync(tmp, { recursive: true, force: true });
+  try {
+    // The app can still be flushing files while it exits; retry, and never fail the run over cleanup.
+    rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 300 });
+  } catch (err) {
+    console.log('  (temp cleanup skipped:', err.code ?? err.message, ')');
+  }
 }
 const passed = results.filter((r) => r.ok).length;
 console.log(`\nE2E: ${passed}/${results.length} steps passed`);

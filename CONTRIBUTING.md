@@ -12,7 +12,7 @@ By taking part you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md). Pl
 
 ## Development setup
 
-Requirements: Linux x86-64, Node.js 22.12 or newer (CI uses Node 24), npm 11, a C/C++ toolchain for `node-pty` (`build-essential`, `python3`), and for packaging `fakeroot` and `dpkg-deb`.
+Requirements: Linux, macOS or Windows; Node.js 22.12 or newer (CI uses Node 24) and npm 11. On Linux you also need a C/C++ toolchain for `node-pty` (`build-essential`, `python3`), and for the `.deb` `fakeroot` and `dpkg-deb`.
 
 ```bash
 git clone https://github.com/AAnkitpatel/k8sconsole.git && cd k8sconsole
@@ -43,7 +43,7 @@ If you change Kubernetes behaviour, also run the integration and UI tests agains
 1. **One change per pull request.** Keep it focused; split refactors from features.
 2. **Branch from `main`** and name the branch after the change, e.g. `fix/ecs-log-tail` or `feat/helm-diff`.
 3. **Tests are required** for bug fixes (a test that fails without the fix) and for new behaviour.
-4. **CI must pass**: type check, lint, unit tests, build and the ECS UI test. A maintainer review is required before merging; `main` is protected.
+4. **CI must pass**: type check, lint, unit tests, build and the ECS UI test on Linux, plus unit tests and the ECS UI test on macOS and Windows. A maintainer review is required before merging; `main` is protected.
 5. **Conventional commit messages** in the PR title, which becomes the squash-merge commit: `feat: …`, `fix: …`, `docs: …`, `test: …`, `refactor: …`, `chore: …`, `ci: …`.
 6. **Update docs** (README, docs/, CHANGELOG.md "Unreleased") when behaviour or settings change.
 7. **Dependencies** are pinned to exact versions. Explain why in the PR when you add or upgrade one, and keep `npm audit` clean.
@@ -67,7 +67,7 @@ TypeScript strict mode, React function components and hooks, and the existing na
 
 1. Update `version` in `package.json` and move "Unreleased" notes in `CHANGELOG.md` under the new version.
 2. Merge to `main`, then tag: `git tag -a v1.2.0 -m "K8sConsole 1.2.0" && git push origin v1.2.0`.
-3. The *Release* workflow builds the `.deb`, writes its SHA-256, and publishes a GitHub release with both files.
+3. The *Release* workflow builds the Linux `.deb`, the macOS `.dmg`/`.zip` (Apple Silicon and Intel) and the Windows installer/`.zip`. It installs and tests each on its own OS, then publishes them with `SHA256SUMS.txt`. To test a release without publishing, run the workflow by hand (*Actions → Release → Run workflow*).
 4. Update the download version and checksum in `website/index.html`; the *Website* workflow deploys it.
 
 ## Licence

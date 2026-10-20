@@ -4,6 +4,16 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-20
+
+### Added
+- **macOS** builds for Apple Silicon and Intel (`.dmg` and `.zip`) and **Windows** x64 builds (installer and portable `.zip`), alongside the Linux `.deb`.
+- Windows terminal support: PowerShell 7, Windows PowerShell or `cmd.exe`, plus Git Bash when chosen. Tools such as `kubectl`, `helm`, `aws` and the Session Manager plugin are found through `PATHEXT`.
+- macOS application and window menus.
+
+### Changed
+- The terminal's native module now ships next to the app archive (`resources/node-pty`) on every platform.
+
 ## [1.1.0] - 2026-10-19
 
 ### Added
@@ -26,6 +36,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
   - logs, pod shells, an integrated terminal, port forwarding
   - Security Scan with fixes, Access (who-can, permission matrix, role editor), Helm, and the AI Assistant
 
-[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.0
 [1.1.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.1.0
 [1.0.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.0.0
