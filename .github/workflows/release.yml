@@ -88,7 +88,9 @@ jobs:
           v=${{ needs.version.outputs.version }}
           mnt=$(hdiutil attach "dist/K8sConsole-$v-mac-arm64.dmg" -nobrowse -readonly | tail -1 | awk -F'\t' '{print $NF}')
           node tests/e2e/ecs.mjs --exe "$mnt/K8sConsole.app/Contents/MacOS/K8sConsole"
-          hdiutil detach "$mnt"
+          # The app's helper processes can hold the image for a few seconds after it quits.
+          for i in 1 2 3 4 5; do hdiutil detach "$mnt" && exit 0; sleep 3; done
+          hdiutil detach -force "$mnt"
       - uses: actions/upload-artifact@v7
         with:
           name: macos
