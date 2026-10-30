@@ -25,12 +25,20 @@ import { AwsWorkspace } from './aws/controller';
 import { ecsAssistantHost } from './aws/assistant-tools';
 import type { AwsClients } from './aws/session';
 import { arnName, type AwsConnectRequest } from '../shared/ecs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { ExtensionStore, clusterCost, extensionFindings, gitopsAction, imageInventory, listGitOps, trivyScan } from './platform';
+import { McpServer, newMcpToken } from './mcp';
+import { READ_ONLY_TOOLS, runAssistantTool, validateToolInput, type AssistantToolHost } from './assistant';
+import { isValidImageRef, type ImageScan } from '../shared/images';
+import type { GitOpsAction } from '../shared/gitops';
 
 export interface Dialogs {
   pickFile(): Promise<string | null>;
   pickFolder(): Promise<string | null>;
   saveFile(suggestedName: string): Promise<string | null>;
   openExternal(url: string): Promise<void>;
+  openFolder?(path: string): Promise<void>;
+  pickExtension?(): Promise<string | null>;
 }
 
 /** Encrypted storage for the Claude API key (Electron safeStorage in the app). */
@@ -85,6 +93,11 @@ export class AppController {
   readonly assistant: Assistant;
   private monitor: MonitorCollector | null = null;
   readonly aws: AwsWorkspace;
+  readonly extensions: ExtensionStore;
+  private readonly imageScans = new Map<string, ImageScan>();
+  private mcp: McpServer | null = null;
+  private mcpError: string | undefined;
+  private readonly mcpCalls: Array<{ at: number; tool: string; ok: boolean }> = [];
 
   constructor(private readonly deps: ControllerDeps) {
     this.settings = new SettingsStore(join(deps.userDataDir, 'settings.json'));
@@ -121,7 +134,70 @@ export class AppController {
       this.refreshSources();
       deps.emit('kubeconfig:changed', { reason });
     });
+    this.extensions = new ExtensionStore(join(deps.userDataDir, 'extensions'));
     this.refreshSources();
+    if (this.settings.get().mcpEnabled) void this.applyMcp();
+  }
+
+  // ---- MCP server ----
+
+  private mcpToken(): string {
+    const file = join(this.deps.userDataDir, 'mcp-token');
+    try {
+      const t = readFileSync(file, 'utf8').trim();
+      if (/^[A-Za-z0-9_-]{32,}$/.test(t)) return t;
+    } catch {
+      // created below
+    }
+    const t = newMcpToken();
+    mkdirSync(this.deps.userDataDir, { recursive: true, mode: 0o700 });
+    writeFileSync(file, t + '\n', { mode: 0o600 });
+    return t;
+  }
+
+  private async applyMcp(rotate = false): Promise<void> {
+    await this.mcp?.stop();
+    this.mcp = null;
+    this.mcpError = undefined;
+    if (rotate) writeFileSync(join(this.deps.userDataDir, 'mcp-token'), newMcpToken() + '\n', { mode: 0o600 });
+    const st = this.settings.get();
+    if (!st.mcpEnabled) return;
+    const host = this.assistantHost() as AssistantToolHost;
+    const server = new McpServer({
+      port: st.mcpPort,
+      token: this.mcpToken(),
+      version: this.deps.appInfo().version,
+      tools: () => READ_ONLY_TOOLS,
+      validate: (name, input) => validateToolInput(name, input),
+      call: (name, input) => runAssistantTool(host, name, input),
+      onCall: (tool, ok) => {
+        this.mcpCalls.unshift({ at: Date.now(), tool, ok });
+        this.mcpCalls.length = Math.min(this.mcpCalls.length, 50);
+      },
+    });
+    try {
+      await server.start();
+      this.mcp = server;
+    } catch (err) {
+      const e = err as NodeJS.ErrnoException;
+      this.mcpError = e.code === 'EADDRINUSE' ? `Port ${st.mcpPort} is already in use. Choose another port.` : e.message;
+    }
+  }
+
+  private mcpStatus() {
+    const st = this.settings.get();
+    return { enabled: st.mcpEnabled, running: !!this.mcp?.running, url: `http://127.0.0.1:${st.mcpPort}/mcp`, token: this.mcpToken(), error: this.mcpError, calls: this.mcpCalls.slice(0, 20) };
+  }
+
+  /** Images used by ECS services (from their task definitions). */
+  private async ecsImages(cluster: string) {
+    const ecs = this.aws.require();
+    const m = new Map<string, Set<string>>();
+    for (const s of await ecs.listServices(cluster)) {
+      const { def } = await ecs.taskDefinition(s.taskDefinition);
+      for (const c of def.containerDefinitions ?? []) if (c.image) (m.get(c.image) ?? m.set(c.image, new Set()).get(c.image)!).add(`${s.name} (${c.name})`);
+    }
+    return [...m].map(([image, u]) => ({ image, usedBy: [...u].sort(), scan: this.imageScans.get(image) }));
   }
 
   refreshSources(): void {
@@ -230,6 +306,7 @@ export class AppController {
     this.portForwards.stopAll();
     this.terminals.stopAll();
     this.aws.disconnect();
+    void this.mcp?.stop();
     this.watcher.close();
   }
 
@@ -248,6 +325,27 @@ export class AppController {
         return { kubernetes, amazonEcs: ecs };
       },
       ecs: ecsAssistantHost(this.aws, () => this.settings.get().assistantReadLogs),
+      platform: {
+        gitops: async (ns?: string) => {
+          const s = this.requireSession();
+          const r = await listGitOps(s.rest, s.discovery, ns);
+          return { engines: r.engines, notes: r.notes, items: r.items.map(({ ref: _ref, actions: _a, ...i }) => i) };
+        },
+        cost: async (ns?: string) => {
+          const s = this.requireSession();
+          const r = await clusterCost(s.rest, s.discovery, this.monitor?.current ?? null, this.settings.get().costPrices, ns);
+          return { prices: r.prices, total: r.total, capacity: r.capacity, byNamespace: r.byNamespace.slice(0, 20), byWorkload: r.byWorkload.slice(0, 30), recommendations: r.recommendations.slice(0, 20), notes: r.notes };
+        },
+        images: async (ns?: string) => {
+          const s = this.requireSession();
+          const r = await imageInventory(s.rest, s.discovery, ns, findExecutable('trivy', undefined), this.imageScans);
+          return {
+            source: r.operator ? 'Trivy Operator reports' : 'local Trivy scans only',
+            notes: r.notes,
+            images: r.images.map((i) => ({ image: i.image, usedBy: i.usedBy.slice(0, 10), scanned: !!i.scan, counts: i.scan?.counts, fixable: i.scan?.fixable, top: i.scan?.vulns.slice(0, 5).map((v) => `${v.severity} ${v.id} ${v.pkg} ${v.installed}${v.fixed ? ` → ${v.fixed}` : ''}`) })),
+          };
+        },
+      },
     };
   }
 
@@ -589,6 +687,74 @@ export class AppController {
         };
       });
       return session;
+    },
+
+    'gitops:list': (ns) => {
+      const s = this.requireSession();
+      return listGitOps(s.rest, s.discovery, ns && isValidName(String(ns)) ? String(ns) : undefined);
+    },
+    'gitops:action': (ref, ns, name, action) => {
+      const s = this.requireSession();
+      const a = String(action) as GitOpsAction;
+      if (!['reconcile', 'suspend', 'resume', 'refresh', 'hard-refresh', 'sync'].includes(a)) throw new Error('Unknown action');
+      return gitopsAction(s.rest, s.discovery, this.validateRef(ref), String(ns), String(name), a);
+    },
+
+    'cost:cluster': (ns) => {
+      const s = this.requireSession();
+      return clusterCost(s.rest, s.discovery, this.monitor?.current ?? null, this.settings.get().costPrices, ns && isValidName(String(ns)) ? String(ns) : undefined);
+    },
+    'cost:ecs': (c) => this.aws.require().cost(AwsWorkspace.cluster(c), this.settings.get().costPrices),
+
+    'images:list': (ns) => {
+      const s = this.requireSession();
+      return imageInventory(s.rest, s.discovery, ns && isValidName(String(ns)) ? String(ns) : undefined, findExecutable('trivy', undefined), this.imageScans);
+    },
+    'images:ecs': async (c) => ({ images: await this.ecsImages(AwsWorkspace.cluster(c)), trivyPath: findExecutable('trivy', undefined), notes: [] }),
+    'images:scan': async (image, source) => {
+      const img = String(image);
+      if (!isValidImageRef(img)) throw new Error('Invalid image reference');
+      const trivy = findExecutable('trivy', undefined);
+      if (!trivy) throw new Error('Trivy is not installed. Install it from https://trivy.dev (or install the Trivy Operator in the cluster) to scan images.');
+      // ECR images: Trivy authenticates with the same AWS profile and region as the app.
+      const env = source === 'ecs' ? ((await this.aws.terminalExtras()).env ?? {}) : {};
+      const scan = await trivyScan(trivy, img, env);
+      this.imageScans.set(img, scan);
+      return scan;
+    },
+
+    'extensions:list': () => ({ ...this.extensions.list(this.settings.get().disabledExtensions), folder: this.extensions.folder }),
+    'extensions:installFile': async () => {
+      const file = await this.deps.dialogs.pickExtension?.();
+      if (!file) return { installed: null };
+      return { installed: this.extensions.install(readFileSync(file, 'utf8').slice(0, 1_000_000)).id };
+    },
+    'extensions:installJson': (json) => ({ installed: this.extensions.install(String(json).slice(0, 1_000_000)).id }),
+    'extensions:remove': (id) => {
+      this.extensions.remove(String(id));
+      this.settings.update({ disabledExtensions: this.settings.get().disabledExtensions.filter((d) => d !== id) });
+    },
+    'extensions:setEnabled': (id, enabled) => {
+      const cur = this.settings.get().disabledExtensions.filter((d) => d !== String(id));
+      this.settings.update({ disabledExtensions: enabled ? cur : [...cur, String(id)] });
+    },
+    'extensions:findings': (ns) => {
+      const s = this.requireSession();
+      return extensionFindings(s.rest, s.discovery, this.extensions.enabled(this.settings.get().disabledExtensions), ns && isValidName(String(ns)) ? String(ns) : undefined);
+    },
+    'extensions:openFolder': async () => {
+      await this.deps.dialogs.openFolder?.(this.extensions.folder);
+    },
+
+    'mcp:status': () => this.mcpStatus(),
+    'mcp:setEnabled': async (enabled, port) => {
+      this.settings.update({ mcpEnabled: !!enabled, ...(port !== undefined ? { mcpPort: Number(port) } : {}) });
+      await this.applyMcp();
+      return this.mcpStatus();
+    },
+    'mcp:regenerateToken': async () => {
+      await this.applyMcp(true);
+      return this.mcpStatus();
     },
 
     'app:info': () => this.deps.appInfo(),

@@ -275,6 +275,57 @@ try {
       await win.getByTestId('toggle-assistant').click();
     });
 
+    await step('hotbar: pin the cluster and switch with one click', async () => {
+      await win.getByTestId('nav-clusters').click();
+      await win.getByTestId('pin-button').first().click();
+      await win.getByTestId('hotbar-item').first().waitFor();
+      assert.equal(await win.getByTestId('hotbar-item').count(), 1);
+      assert.match(await win.getByTestId('hotbar-item').first().getAttribute('class'), /active/);
+      await win.getByTestId('nav-overview').click();
+      await win.getByText('Cluster Overview').waitFor();
+    });
+
+    await step('platform: cost, GitOps and image vulnerabilities', async () => {
+      // Screenshots without the terminal (it shows this machine's prompt).
+      if (await win.getByRole('button', { name: 'Hide terminal' }).isVisible()) await win.getByRole('button', { name: 'Hide terminal' }).click();
+      await win.getByTestId('nav-cost').click();
+      await win.getByTestId('cost-view').waitFor();
+      await win.getByTestId('cost-total').waitFor({ timeout: 20000 });
+      assert.match(await win.getByTestId('cost-total').textContent(), /^\$/);
+      await snap(win, { path: join(shots, '12-cost.png') });
+      await win.getByTestId('nav-gitops').click();
+      await win.getByTestId('gitops-view').waitFor();
+      await win.locator('[data-testid="gitops-empty"], [data-testid="gitops-row"]').first().waitFor({ timeout: 20000 });
+      await snap(win, { path: join(shots, '15-gitops.png') });
+      await win.getByTestId('nav-images').click();
+      await win.getByTestId('image-row').first().waitFor({ timeout: 20000 });
+      await snap(win, { path: join(shots, '13-images.png') });
+    });
+
+    await step('extensions: install, policy results, and a command typed into the terminal', async () => {
+      await win.getByTestId('nav-extensions').click();
+      await win.getByTestId('ext-add-json').click();
+      await win.getByTestId('ext-install').click();
+      await win.getByTestId('ext-card').first().waitFor();
+      await win.getByTestId('ext-finding').filter({ hasText: 'no "team" label' }).first().waitFor({ timeout: 20000 });
+      await snap(win, { path: join(shots, '14-extensions.png') });
+      await win.getByTestId('nav-deployments').click();
+      await win.getByTestId('resource-row').filter({ hasText: 'web' }).first().click();
+      await win.getByTestId('extension-command').filter({ hasText: 'Rollout history' }).click();
+      const term = win.getByTestId('dock-terminal').last();
+      await term.getByText('kubectl rollout history deployment/web -n k8sc-demo').first().waitFor({ timeout: 20000 });
+      await win.getByRole('button', { name: 'Hide terminal' }).click();
+    });
+
+    await step('settings: MCP server on and off', async () => {
+      await win.getByTestId('nav-settings').click();
+      await win.getByTestId('mcp-enabled').check();
+      await win.getByTestId('mcp-state').filter({ hasText: 'Running' }).waitFor({ timeout: 10000 });
+      assert.match(await win.getByTestId('mcp-command').textContent(), /claude mcp add --transport http k8sconsole http:\/\/127\.0\.0\.1:\d+\/mcp/);
+      await win.getByTestId('mcp-enabled').uncheck();
+      await win.getByTestId('mcp-state').waitFor({ state: 'detached', timeout: 10000 });
+    });
+
     await step('settings view and theme switch', async () => {
       await win.getByTestId('nav-settings').click();
       await win.getByLabel('Theme').selectOption('light');

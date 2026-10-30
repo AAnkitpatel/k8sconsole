@@ -54,12 +54,17 @@ export function ClustersView({
   status,
   onConnect,
   onRefresh,
+  pinned = [],
+  onTogglePin,
 }: {
   sources: KubeconfigSource[];
   contexts: ClusterContext[];
   status: ConnectionStatus;
   onConnect: (id: string) => void;
   onRefresh: () => void;
+  /** Hotbar: pinned context ids. */
+  pinned?: string[];
+  onTogglePin?: (id: string) => void;
 }) {
   const [importing, setImporting] = useState(false);
   const [filter, setFilter] = useState('');
@@ -146,6 +151,11 @@ export function ClustersView({
                     </div>
                     {c.insecureSkipTlsVerify && <span className="badge badge-warn">TLS verification disabled</span>}
                     <div className="context-actions">
+                      {onTogglePin && (
+                        <button className={`btn btn-sm ${pinned.includes(c.id) ? 'btn-active' : ''}`} onClick={() => onTogglePin(c.id)} title={pinned.includes(c.id) ? 'Remove from the hotbar' : 'Pin to the hotbar for one-click switching'} data-testid="pin-button">
+                          {pinned.includes(c.id) ? '★ Pinned' : '☆ Pin'}
+                        </button>
+                      )}
                       {active && status.state === 'connected' ? (
                         <span className="badge badge-ok">Connected</span>
                       ) : active && status.state === 'connecting' ? (

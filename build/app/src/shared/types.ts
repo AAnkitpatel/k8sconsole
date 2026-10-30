@@ -220,6 +220,15 @@ export interface AppSettings {
   awsLastConnection: import('./ecs').AwsConnectRequest | null;
   /** Last selected ECS cluster per `<profile or default>|<region>`. */
   ecsLastCluster: Record<string, string>;
+  /** Hotbar: pinned Kubernetes contexts (ids), in display order. */
+  pinnedContexts: string[];
+  /** Cost monitoring rates. */
+  costPrices: import('./cost').CostPrices;
+  /** Built-in MCP server (127.0.0.1 only). */
+  mcpEnabled: boolean;
+  mcpPort: number;
+  /** Ids of installed extensions that are switched off. */
+  disabledExtensions: string[];
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -239,6 +248,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   workspace: 'kubernetes',
   awsLastConnection: null,
   ecsLastCluster: {},
+  pinnedContexts: [],
+  costPrices: { cpuHour: 0.04048, memGiBHour: 0.004445, currency: 'USD' },
+  mcpEnabled: false,
+  mcpPort: 3929,
+  disabledExtensions: [],
 };
 
 /** Result wrapper used for every IPC call so errors cross the bridge as data. */

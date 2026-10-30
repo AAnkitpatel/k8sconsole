@@ -25,6 +25,16 @@
 - ECS Exec (an interactive shell in a container) counts as a change and is only offered on read-write connections. The shell connects directly from the main process to Session Manager (ECS `ExecuteCommand` returns a short-lived stream URL and token); keystrokes and output never pass through the aws CLI or a local plugin, and session logging configured on the cluster still applies.
 - ECS names, ARNs, subnet and security-group IDs, revisions, counts and command overrides are validated in the main process before any call.
 
+## MCP server
+- Off by default. When enabled it listens on 127.0.0.1 only and requires a random 256-bit bearer token (compared in constant time, stored with owner-only permissions, rotatable in Settings).
+- Requests with a non-loopback `Host` header or a browser `Origin` are rejected (DNS-rebinding and drive-by protection); bodies are limited to 1 MB.
+- Only the assistant's read-only tools are exposed; the change-proposal tool is not, and secret and environment values stay redacted.
+
+## Extensions
+- Extensions are JSON manifests, validated on install and on load; no extension code runs inside the app.
+- Commands are typed into a terminal for the user to read and run, never executed automatically, and only identifier-safe values (`[A-Za-z0-9._:/@-]`) are substituted, so an object name cannot inject shell syntax.
+- Links must be http(s) and substituted values are URL-encoded; policy rules use a fixed set of checks on dotted paths, and prototype keys are refused.
+
 ## Changes to clusters
 - Every mutating action asks for confirmation. Deletes, drains, Helm uninstalls, ECS service deletes, scaling a service to zero and deregistering a task definition require typing the name.
 - YAML edits use optimistic concurrency and strict field validation, and offer a server-side dry run. Security fixes and assistant proposals show the exact change and run a dry run before they can be applied.

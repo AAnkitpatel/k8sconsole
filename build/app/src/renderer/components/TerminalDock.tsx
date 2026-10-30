@@ -16,6 +16,8 @@ interface Tab {
   aws?: { cluster?: string };
   /** An ECS Exec session into a container instead of a local shell. */
   exec?: EcsExecTarget;
+  /** Typed into the shell once it starts (not run): extension commands. */
+  initialInput?: string;
 }
 
 export interface EcsExecTarget {
@@ -101,6 +103,8 @@ function TermPane({ tab, active, dark, onTitle, onExit }: { tab: Tab; active: bo
         setInfo(i);
         early.filter((d) => d.sessionId === i.sessionId).forEach(handle);
         term.focus();
+        // Give the shell time to print its prompt, then type the command without pressing Enter.
+        if (tab.initialInput) setTimeout(() => !disposed && sessionRef.current && void call('terminal:input', sessionRef.current, '\x15' + tab.initialInput), 900);
       })
       .catch((err) => term.writeln(`\x1b[31m${errorMessage(err)}\x1b[0m`));
     if (tab.bind) void call('terminal:suggestions', tab.namespace || undefined).then(setSuggestions).catch(() => undefined);
@@ -173,6 +177,7 @@ export function TerminalDock({
   contextName,
   aws,
   execRequest,
+  typeRequest,
 }: {
   open: boolean;
   onClose: () => void;
@@ -184,6 +189,8 @@ export function TerminalDock({
   aws?: { label: string; cluster?: string; clusterName?: string };
   /** Each new value opens an ECS Exec tab. */
   execRequest?: { id: number; target: EcsExecTarget } | null;
+  /** Each new value opens a terminal with a command typed in (not run). */
+  typeRequest?: { id: number; text: string; title?: string; aws: boolean } | null;
 }) {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [active, setActive] = useState<number | null>(null);
@@ -209,7 +216,7 @@ export function TerminalDock({
   }, [aws, shell]);
 
   useEffect(() => {
-    if (open && tabs.length === 0 && !execRequest) {
+    if (open && tabs.length === 0 && !execRequest && !typeRequest) {
       if (aws) addAws();
       else add(connected);
     }
@@ -224,6 +231,19 @@ export function TerminalDock({
     setTabs((x) => [...x, { key, title: `exec ${execRequest.target.title}`, shell: 'auto', bind: false, namespace: '', exec: execRequest.target }]);
     setActive(key);
   }, [execRequest]);
+
+  const lastType = useRef(0);
+  useEffect(() => {
+    if (!typeRequest || typeRequest.id === lastType.current) return;
+    lastType.current = typeRequest.id;
+    const key = nextKey.current++;
+    const t: Tab = typeRequest.aws && aws
+      ? { key, title: typeRequest.title ?? 'aws', shell, bind: false, namespace: '', aws: { cluster: aws.cluster }, initialInput: typeRequest.text }
+      : { key, title: typeRequest.title ?? 'command', shell, bind: connected, namespace, initialInput: typeRequest.text };
+    setTabs((x) => [...x, t]);
+    setActive(key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeRequest]);
 
   const close = (key: number) => {
     setTabs((x) => {

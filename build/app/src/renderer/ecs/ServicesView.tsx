@@ -8,6 +8,9 @@ import { LineChart, SERIES } from '../components/charts';
 import { useSelection } from '../lib/selection';
 import { DataTable, LoadState, NoCluster, Props, ReadOnlyNote, pct, useLoad, type Col } from './common';
 import { EcsLogPanel } from './LogPanel';
+import { ExtensionActions } from '../components/ExtensionActions';
+
+const arnRegion = (arn: string) => arn.split(':')[3] ?? '';
 import { StatusBadge, ago, isWarningEvent, taskCols, useEcs, when } from './shared';
 
 type Tab = 'overview' | 'deployments' | 'tasks' | 'events' | 'logs' | 'metrics' | 'targets' | 'json';
@@ -185,6 +188,7 @@ function ServiceDetails({ service: s, dark, settings, onClose, onChanged, onExec
           Delete
         </button>
         <ReadOnlyNote />
+        <ExtensionActions kind="EcsService" values={{ service: s.name, cluster: arnName(cluster), name: s.name, region: arnRegion(s.arn) }} />
       </div>
       <nav className="tabs" role="tablist">
         {tabs.map(([t, label]) => (

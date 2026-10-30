@@ -1,3 +1,5 @@
+import { ExtensionActions } from './ExtensionActions';
+import { useCommandBridge } from '../lib/commandBridge';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ApiResourceInfo, AppSettings, KubeObject, ResourceRef } from '../../shared/types';
 import { formatAge, summarizeNode, summarizePod } from '../../shared/format';
@@ -629,6 +631,7 @@ function PortForwardDialog({ object, onClose }: { object: KubeObject; onClose: (
 }
 
 export function DetailsPanel({ object, refInfo, discovery, settings, dark, onClose, onNavigate }: Props) {
+  const bridge = useCommandBridge();
   const [tab, setTab] = useState<Tab>('overview');
   const [pf, setPf] = useState(false);
   const { confirm, prompt } = useDialogs();
@@ -764,7 +767,10 @@ export function DetailsPanel({ object, refInfo, discovery, settings, dark, onClo
           ×
         </button>
       </header>
-      <div className="details-actions">{actions}</div>
+      <div className="details-actions">
+        {actions}
+        <ExtensionActions kind={kind} values={{ name, namespace: ns, context: bridge.context, kind: kind.toLowerCase() }} />
+      </div>
       <nav className="tabs" role="tablist">
         {tabs.map(([t, label]) => (
           <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>

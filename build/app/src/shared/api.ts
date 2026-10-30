@@ -1,6 +1,10 @@
 import type { ResourceGraph } from './graph';
 import type { Finding, SecurityReport } from './security';
 import type { EffectiveRule, Subject, WhoCanEntry } from './rbac';
+import type { GitOpsAction, GitOpsItem } from './gitops';
+import type { CostReport, EcsCostLine } from './cost';
+import type { ImageScan, ImageUse } from './images';
+import type { ExtFinding, InstalledExtension } from './extensions';
 import type {
   AwsConnectRequest,
   AwsConnectionStatus,
@@ -182,6 +186,28 @@ export interface InvokeApi {
   'ecs:execInfo': (cluster: string, task: string, container: string) => EcsExecInfo;
   'ecs:execStart': (cluster: string, task: string, container: string, cols: number, rows: number) => TerminalSessionInfo;
 
+  'gitops:list': (namespace?: string) => { items: GitOpsItem[]; engines: string[]; notes: string[] };
+  'gitops:action': (ref: ResourceRef, namespace: string, name: string, action: GitOpsAction) => void;
+
+  'cost:cluster': (namespace?: string) => CostReport & { notes: string[]; usageSource?: string };
+  'cost:ecs': (cluster: string) => { total: number; idle: number; lines: EcsCostLine[]; notes: string[] };
+
+  'images:list': (namespace?: string) => { images: Array<ImageUse & { scan?: ImageScan }>; operator: boolean; trivyPath: string | null; notes: string[] };
+  'images:ecs': (cluster: string) => { images: Array<ImageUse & { scan?: ImageScan }>; trivyPath: string | null; notes: string[] };
+  'images:scan': (image: string, source: 'kubernetes' | 'ecs') => ImageScan;
+
+  'extensions:list': () => { installed: InstalledExtension[]; errors: Array<{ path: string; errors: string[] }>; folder: string };
+  'extensions:installFile': () => { installed: string | null };
+  'extensions:installJson': (json: string) => { installed: string };
+  'extensions:remove': (id: string) => void;
+  'extensions:setEnabled': (id: string, enabled: boolean) => void;
+  'extensions:findings': (namespace?: string) => { findings: ExtFinding[]; notes: string[] };
+  'extensions:openFolder': () => void;
+
+  'mcp:status': () => { enabled: boolean; running: boolean; url: string; token: string; error?: string; calls: Array<{ at: number; tool: string; ok: boolean }> };
+  'mcp:setEnabled': (enabled: boolean, port?: number) => { enabled: boolean; running: boolean; url: string; token: string; error?: string; calls: Array<{ at: number; tool: string; ok: boolean }> };
+  'mcp:regenerateToken': () => { enabled: boolean; running: boolean; url: string; token: string; error?: string; calls: Array<{ at: number; tool: string; ok: boolean }> };
+
   'app:info': () => { version: string; electron: string; chrome: string; node: string; platform: string };
   'app:openExternal': (url: string) => void;
 }
@@ -227,6 +253,11 @@ export const INVOKE_METHODS: InvokeMethod[] = [
   'ecs:clusters', 'ecs:cluster', 'ecs:services', 'ecs:service', 'ecs:tasks', 'ecs:task', 'ecs:containerInstances', 'ecs:taskDefinition', 'ecs:families', 'ecs:revisions',
   'ecs:targetHealth', 'ecs:metrics', 'ecs:map', 'ecs:scan', 'ecs:events', 'ecs:logsStart', 'ecs:logsStop',
   'ecs:updateService', 'ecs:stopTask', 'ecs:runTask', 'ecs:registerTaskDefinition', 'ecs:deregisterTaskDefinition', 'ecs:createService', 'ecs:deleteService', 'ecs:execInfo', 'ecs:execStart',
+  'gitops:list', 'gitops:action',
+  'cost:cluster', 'cost:ecs',
+  'images:list', 'images:ecs', 'images:scan',
+  'extensions:list', 'extensions:installFile', 'extensions:installJson', 'extensions:remove', 'extensions:setEnabled', 'extensions:findings', 'extensions:openFolder',
+  'mcp:status', 'mcp:setEnabled', 'mcp:regenerateToken',
   'app:info', 'app:openExternal',
 ];
 

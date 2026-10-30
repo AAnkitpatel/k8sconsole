@@ -174,6 +174,13 @@ if (!app.requestSingleInstanceLock() && process.env.K8SC_ALLOW_MULTIPLE !== '1')
           return r.canceled ? null : r.filePath ?? null;
         },
         openExternal: (url) => shell.openExternal(url),
+        openFolder: async (path) => {
+          await shell.openPath(path);
+        },
+        pickExtension: async () => {
+          const r = await dialog.showOpenDialog(mainWindow!, { title: 'Install extension (extension.json)', properties: ['openFile'], filters: [{ name: 'Extension manifest', extensions: ['json'] }] });
+          return r.canceled ? null : r.filePaths[0] ?? null;
+        },
       },
     });
     registerIpc(controller);

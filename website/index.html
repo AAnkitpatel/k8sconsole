@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>K8sConsole — one desktop console for Kubernetes and Amazon ECS</title>
-    <meta name="description" content="K8sConsole is a free, open-source desktop console for Kubernetes and Amazon ECS on Linux, macOS and Windows: live maps, monitoring, logs, shells, security scanning, access control, Helm, ECS services and tasks with CloudWatch logs, and an AI assistant that proposes fixes you review." />
+    <meta name="description" content="K8sConsole is a free, open-source desktop console for Kubernetes and Amazon ECS on Linux, macOS and Windows, with GitOps (Flux, Argo CD), cost monitoring, image vulnerability scanning, an MCP server and extensions: live maps, monitoring, logs, shells, security scanning, access control, Helm, ECS services and tasks with CloudWatch logs, and an AI assistant that proposes fixes you review." />
     <meta property="og:title" content="K8sConsole — Kubernetes and Amazon ECS in one desktop app" />
     <meta property="og:description" content="Agent-free. Live maps, monitoring, security scan, access control, Helm and an AI assistant — in one desktop app." />
     <meta property="og:image" content="assets/screens/overview.png" />
@@ -545,6 +545,33 @@
             <div class="shot"><img src="assets/screens/ecs-services.png" alt="Amazon ECS services list with status and running counts, and a service details panel with deployments, tasks, events, logs, metrics and targets tabs" loading="lazy" width="1440" height="834" /></div>
           </div>
 
+          <div class="feature" id="gitops">
+            <div class="text">
+              <div class="kicker">GitOps</div>
+              <h3>Flux and Argo CD, next to the workloads they deploy</h3>
+              <p>Every Argo CD Application and Flux Kustomization, HelmRelease and source in one list, with sync and health state, source, revision and the error that is holding it up. Reconcile, suspend, refresh or sync from the same screen.</p>
+              <ul class="ticks">
+                <li>No GitOps agent or CLI needed: K8sConsole reads and patches the same resources the flux and argocd CLIs do</li>
+                <li>Every action asks for confirmation</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/gitops.png" alt="GitOps view listing Argo CD Applications and Flux Kustomizations, HelmReleases and GitRepositories with sync state, source and revision, and a failing Kustomization's error message" loading="lazy" width="1440" height="834" /></div>
+          </div>
+
+          <div class="feature flip" id="cost">
+            <div class="text">
+              <div class="kicker">Cost &amp; security</div>
+              <h3>Know what it costs, and what's vulnerable</h3>
+              <p>Estimated monthly cost by namespace, workload and ECS service, with idle spend and rightsizing suggestions from live usage. Image vulnerability scanning covers what is actually running, from Trivy Operator reports or a local Trivy scan.</p>
+              <ul class="ticks">
+                <li>Rates you control (Fargate on-demand rates by default)</li>
+                <li>Smaller valid Fargate task sizes suggested from 24-hour utilization</li>
+                <li>Critical and high vulnerabilities per image, the fixed versions, and the workloads affected</li>
+              </ul>
+            </div>
+            <div class="shot"><img src="assets/screens/cost.png" alt="Cost view for Amazon ECS showing monthly cost per service, idle spend and average utilization" loading="lazy" width="1440" height="834" /></div>
+          </div>
+
           <div class="feature flip">
             <div class="text">
               <div class="kicker">Monitor</div>
@@ -620,6 +647,21 @@
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h5M8 16h8" /></svg></div>
             <h4>YAML with guard-rails</h4>
             <p>Live validation, server-side dry run, conflict detection and create-from-YAML.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M8 12h8M12 8v8" /></svg></div>
+            <h4>MCP server</h4>
+            <p>Let Claude Code, Claude Desktop or Cursor read your clusters through K8sConsole: local only, token-protected, read-only.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></svg></div>
+            <h4>Extensions</h4>
+            <p>Add your team's commands, dashboard links and policy rules as simple JSON. No code runs in the app.</p>
+          </div>
+          <div class="card">
+            <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z" /></svg></div>
+            <h4>Hotbar</h4>
+            <p>Pin your clusters and jump between them with one click or Alt+1…9.</p>
           </div>
           <div class="card">
             <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" /></svg></div>

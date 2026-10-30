@@ -2015,3 +2015,106 @@ textarea {
   max-height: 240px;
   overflow: auto;
 }
+
+/* Hotbar: pinned clusters */
+.hotbar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 10px 8px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.hotbar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 3px 4px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+.hotbar-item:hover {
+  background: var(--bg-hover);
+}
+.hotbar-item.active {
+  background: var(--accent-weak);
+  color: var(--accent);
+}
+.hotbar-badge {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+}
+.hotbar-item.active .hotbar-badge {
+  border-color: var(--accent);
+}
+.hotbar-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Platform views */
+.platform-cards {
+  margin-bottom: 10px;
+}
+.platform-view .list-pane > .inline-warn,
+.platform-view .list-pane > .inline-error {
+  margin: 0 16px 8px;
+}
+.ext-card .card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.ext-card .toolbar {
+  margin-top: 8px;
+}
+.ext-off {
+  opacity: 0.55;
+}
+.ext-actions {
+  display: contents;
+}
+.inline-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.truncate {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.gitops-source {
+  max-width: 340px;
+}
+.gitops-rev {
+  max-width: 150px;
+}
+.gitops-dest {
+  max-width: 260px;
+}
+.gitops-actions {
+  display: inline-flex;
+  gap: 6px;
+  white-space: nowrap;
+}

@@ -1,3 +1,4 @@
+import { McpSettings } from './ExtensionsView';
 import { useEffect, useState } from 'react';
 import type { AppSettings, AssistantStatus } from '../../shared/types';
 import { call, errorMessage } from '../lib/api';
@@ -110,6 +111,7 @@ export function SettingsView({ settings, onChange }: { settings: AppSettings; on
           </div>
         )}
       </section>
+      <McpSettings />
       <section className="panel">
         <h3>About</h3>
         {info && (
