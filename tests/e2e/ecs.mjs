@@ -209,7 +209,9 @@ try {
     await win.getByTestId('toggle-terminal').click();
     const term = win.getByTestId('dock-terminal').last();
     await term.waitFor();
-    await win.waitForTimeout(1500);
+    // Wait for the shell's banner (zsh, bash and PowerShell all print the region) before typing.
+    await term.getByText(/region eu-west-2/).first().waitFor({ timeout: 30000 });
+    await win.waitForTimeout(500);
     await term.click();
     // The default shell is PowerShell on Windows and zsh/bash elsewhere.
     const probe = process.platform === 'win32' ? 'Write-Output ("bound:" + $env:AWS_PROFILE + ":" + $env:AWS_REGION + ":" + $env:K8SC_ECS_CLUSTER)' : 'echo "bound:$AWS_PROFILE:$AWS_REGION:$K8SC_ECS_CLUSTER"';

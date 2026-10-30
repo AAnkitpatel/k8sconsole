@@ -32,6 +32,7 @@ function TermPane({ tab, active, dark, onTitle, onExit }: { tab: Tab; active: bo
   const termRef = useRef<XTerm | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const sessionRef = useRef<string | null>(null);
+  const lastOutput = useRef(0);
   const [info, setInfo] = useState<TerminalSessionInfo | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [line, setLine] = useState('');
@@ -59,7 +60,10 @@ function TermPane({ tab, active, dark, onTitle, onExit }: { tab: Tab; active: bo
     let disposed = false;
     const early: Array<{ sessionId: string; data?: string; exit?: boolean; error?: string }> = [];
     const handle = (d: { data?: string; exit?: boolean; error?: string }) => {
-      if (d.data) term.write(d.data);
+      if (d.data) {
+        term.write(d.data);
+        lastOutput.current = Date.now();
+      }
       if (d.exit) {
         setClosed(true);
         term.writeln(`\r\n\x1b[90m[process exited${d.error ? `: ${d.error}` : ''}]\x1b[0m`);
@@ -103,8 +107,18 @@ function TermPane({ tab, active, dark, onTitle, onExit }: { tab: Tab; active: bo
         setInfo(i);
         early.filter((d) => d.sessionId === i.sessionId).forEach(handle);
         term.focus();
-        // Give the shell time to print its prompt, then type the command without pressing Enter.
-        if (tab.initialInput) setTimeout(() => !disposed && sessionRef.current && void call('terminal:input', sessionRef.current, '\x15' + tab.initialInput), 900);
+        // Type the command (without pressing Enter) once the shell has printed its prompt and gone quiet.
+        if (tab.initialInput) {
+          const started = Date.now();
+          const tick = setInterval(() => {
+            if (disposed || !sessionRef.current) return clearInterval(tick);
+            const quiet = lastOutput.current > 0 && Date.now() - lastOutput.current > 400;
+            if (quiet || Date.now() - started > 8000) {
+              clearInterval(tick);
+              void call('terminal:input', sessionRef.current, '\x15' + tab.initialInput);
+            }
+          }, 150);
+        }
       })
       .catch((err) => term.writeln(`\x1b[31m${errorMessage(err)}\x1b[0m`));
     if (tab.bind) void call('terminal:suggestions', tab.namespace || undefined).then(setSuggestions).catch(() => undefined);
