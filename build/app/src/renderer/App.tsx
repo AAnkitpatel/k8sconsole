@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ApiResourceInfo, AppSettings, ClusterContext, ConnectionStatus, KubeconfigSource, ResourceRef } from '../shared/types';
 import { DEFAULT_SETTINGS } from '../shared/types';
 import { NAV_GROUPS, RESOURCE_CATALOG } from '../shared/resources';
@@ -24,6 +24,11 @@ import { EcsProvider } from './ecs/state';
 import { EcsContent, EcsSidebar, EcsTopbar, useEcsAssistantContext, useEcsDock } from './ecs/EcsWorkspace';
 import type { EcsExecTarget } from './components/TerminalDock';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CommandBridge } from './lib/commandBridge';
+import { GitOpsView } from './views/GitOpsView';
+import { CostView } from './views/CostView';
+import { ImagesView } from './views/ImagesView';
+import { ExtensionsView } from './views/ExtensionsView';
 import { useEcs } from './ecs/state';
 
 type View =
@@ -38,6 +43,10 @@ type View =
   | { type: 'crds' }
   | { type: 'helm' }
   | { type: 'portforwards' }
+  | { type: 'gitops' }
+  | { type: 'cost' }
+  | { type: 'images' }
+  | { type: 'extensions' }
   | { type: 'settings' };
 
 function useDarkMode(theme: AppSettings['theme']): boolean {
@@ -86,6 +95,20 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
   // Navigating to another view clears a rendering error shown by the boundary.
   const viewKey = `${ws}|${JSON.stringify(view)}|${ws === 'ecs' ? JSON.stringify(ecsView) : ''}`;
   const setWorkspace = (w: AppSettings['workspace']) => void call('settings:update', { workspace: w }).then(setSettings);
+  const [typeRequest, setTypeRequest] = useState<{ id: number; text: string; title?: string; aws: boolean } | null>(null);
+  const insertCommand = useCallback(
+    (text: string, title?: string) => {
+      setTypeRequest((r) => ({ id: (r?.id ?? 0) + 1, text, title, aws: settings.workspace === 'ecs' }));
+      setTermOpen(true);
+    },
+    [settings.workspace],
+  );
+  // Alt+1…9 switches to a pinned cluster; a ref keeps the shortcut handler current.
+  const hotbarRef = useRef<{ ids: string[]; connect?: (id: string) => void }>({ ids: [] });
+  const togglePin = (id: string) => {
+    const cur = settings.pinnedContexts;
+    void call('settings:update', { pinnedContexts: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] }).then(setSettings);
+  };
   const openExec = useCallback((target: EcsExecTarget) => {
     setExecRequest((r) => ({ id: (r?.id ?? 0) + 1, target }));
     setTermOpen(true);
@@ -141,6 +164,14 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && /^[1-9]$/.test(e.key) && hotbarRef.current.connect) {
+        const id = hotbarRef.current.ids[Number(e.key) - 1];
+        if (id) {
+          e.preventDefault();
+          hotbarRef.current.connect(id);
+        }
+        return;
+      }
       if (e.ctrlKey && e.key === '`') {
         e.preventDefault();
         setTermOpen((o) => !o);
@@ -149,6 +180,8 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  hotbarRef.current = { ids: settings.pinnedContexts.filter((id) => contexts.some((c) => c.id === id)), connect: (id) => status.contextId !== id && void connect(id) };
 
   const changeNamespace = (ns: string) => {
     setNamespace(ns);
@@ -187,6 +220,7 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
   );
 
   return (
+    <CommandBridge.Provider value={{ insertCommand, context: activeContext?.name }}>
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
@@ -222,6 +256,25 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
             ))}
           </select>
         </div>
+        {settings.pinnedContexts.length > 0 && (
+          <div className="hotbar" role="toolbar" aria-label="Pinned clusters" data-testid="hotbar">
+            {settings.pinnedContexts
+              .map((id) => contexts.find((c) => c.id === id))
+              .filter((c): c is ClusterContext => !!c)
+              .map((c, i) => (
+                <button
+                  key={c.id}
+                  className={`hotbar-item ${status.contextId === c.id ? 'active' : ''}`}
+                  onClick={() => status.contextId !== c.id && void connect(c.id)}
+                  title={`${c.name}${i < 9 ? ` (Alt+${i + 1})` : ''}`}
+                  data-testid="hotbar-item"
+                >
+                  <span className="hotbar-badge">{c.name.replace(/^(arn:aws:eks:[^:]+:\d+:cluster\/|gke_[^_]+_[^_]+_)/, '').slice(0, 2).toUpperCase()}</span>
+                  <span className="hotbar-name">{c.name.replace(/^arn:aws:eks:[^:]+:\d+:cluster\//, '')}</span>
+                </button>
+              ))}
+          </div>
+        )}
         <nav className="nav">
           {navButton({ type: 'overview' }, 'Overview', 'nav-overview')}
           {navButton({ type: 'monitor' }, 'Monitor', 'nav-monitor')}
@@ -251,6 +304,15 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
               {navButton({ type: 'crds' }, 'Custom Resources')}
               {navButton({ type: 'helm' }, 'Helm Releases')}
               {navButton({ type: 'portforwards' }, 'Port Forwards')}
+            </div>
+          )}
+          {connected && (
+            <div className="nav-group">
+              <div className="nav-group-title">Platform</div>
+              {navButton({ type: 'gitops' }, 'GitOps', 'nav-gitops')}
+              {navButton({ type: 'cost' }, 'Cost', 'nav-cost')}
+              {navButton({ type: 'images' }, 'Image Vulnerabilities', 'nav-images')}
+              {navButton({ type: 'extensions' }, 'Extensions', 'nav-extensions')}
             </div>
           )}
         </nav>
@@ -317,10 +379,10 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
         <div className="content">
           <ErrorBoundary label="this view" resetKey={viewKey}>
           {!booted && <div className="empty">Loading…</div>}
-          {booted && ws === 'ecs' && view.type !== 'settings' && <EcsContent settings={settings} dark={dark} onExec={openExec} />}
+          {booted && ws === 'ecs' && view.type !== 'settings' && <EcsContent settings={settings} dark={dark} onExec={openExec} onSettings={setSettings} />}
           {booted && ws === 'kubernetes' && (
           <>
-          {booted && view.type === 'clusters' && <ClustersView sources={sources} contexts={contexts} status={status} onConnect={(id) => void connect(id)} onRefresh={() => void refreshKubeconfigs()} />}
+          {booted && view.type === 'clusters' && <ClustersView sources={sources} contexts={contexts} status={status} onConnect={(id) => void connect(id)} onRefresh={() => void refreshKubeconfigs()} pinned={settings.pinnedContexts} onTogglePin={togglePin} />}
           {booted && view.type === 'settings' && <SettingsView settings={settings} onChange={setSettings} />}
           {connected && view.type === 'monitor' && <MonitorView key={status.contextId ?? ''} namespace={namespace} />}
           {connected && view.type === 'map' && <ClusterMapView key={status.contextId ?? ''} namespace={namespace} onNavigate={navigate} />}
@@ -345,6 +407,10 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
           {connected && view.type === 'crds' && <CustomResourcesView namespace={namespace} discovery={discovery} settings={settings} dark={dark} onNavigate={navigate} />}
           {connected && view.type === 'helm' && <HelmView namespace={namespace} dark={dark} />}
           {connected && view.type === 'portforwards' && <PortForwardsView />}
+          {connected && view.type === 'gitops' && <GitOpsView key={status.contextId ?? ''} namespace={namespace} onNavigate={navigate} />}
+          {connected && view.type === 'cost' && <CostView key={status.contextId ?? ''} namespace={namespace} settings={settings} onSettings={setSettings} />}
+          {connected && view.type === 'images' && <ImagesView key={status.contextId ?? ''} source="kubernetes" namespace={namespace} />}
+          {connected && view.type === 'extensions' && <ExtensionsView key={status.contextId ?? ''} namespace={namespace} connected={connected} dark={dark} />}
           {!connected && booted && !['clusters', 'settings'].includes(view.type) && (
             <div className="empty">
               <p>Not connected.</p>
@@ -372,9 +438,10 @@ function Workspace({ settings, setSettings }: { settings: AppSettings; setSettin
             .join('\n')}
         />
         </div>
-        <TerminalDock open={termOpen} onClose={() => setTermOpen(false)} connected={connected} namespace={namespace} dark={dark} contextName={activeContext?.name} aws={ecsDock} execRequest={execRequest} />
+        <TerminalDock open={termOpen} onClose={() => setTermOpen(false)} connected={connected} namespace={namespace} dark={dark} contextName={activeContext?.name} aws={ecsDock} execRequest={execRequest} typeRequest={typeRequest} />
       </main>
     </div>
+    </CommandBridge.Provider>
   );
 }
 

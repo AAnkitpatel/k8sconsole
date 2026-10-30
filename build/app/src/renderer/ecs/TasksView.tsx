@@ -6,6 +6,7 @@ import { YamlEditor } from '../components/YamlEditor';
 import { useSelection } from '../lib/selection';
 import { DataTable, LoadState, NoCluster, Props, ReadOnlyNote, useLoad } from './common';
 import { EcsLogPanel } from './LogPanel';
+import { ExtensionActions } from '../components/ExtensionActions';
 import { StatusBadge, taskCols, taskLabel, useEcs, when } from './shared';
 
 type Tab = 'overview' | 'logs' | 'shell' | 'json';
@@ -116,6 +117,7 @@ function TaskDetails({ task: t, dark, onClose, onChanged, onExec }: { task: EcsT
           Task definition
         </button>
         <ReadOnlyNote />
+        <ExtensionActions kind="EcsTask" values={{ task: t.id, cluster: arnName(cluster), name: t.id, service: t.serviceName, region: t.arn.split(':')[3] ?? '' }} />
       </div>
       <nav className="tabs" role="tablist">
         {(

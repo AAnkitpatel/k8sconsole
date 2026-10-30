@@ -16,6 +16,8 @@ interface Tab {
   aws?: { cluster?: string };
   /** An ECS Exec session into a container instead of a local shell. */
   exec?: EcsExecTarget;
+  /** Typed into the shell once it starts (not run): extension commands. */
+  initialInput?: string;
 }
 
 export interface EcsExecTarget {
@@ -30,6 +32,7 @@ function TermPane({ tab, active, dark, onTitle, onExit }: { tab: Tab; active: bo
   const termRef = useRef<XTerm | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const sessionRef = useRef<string | null>(null);
+  const lastOutput = useRef(0);
   const [info, setInfo] = useState<TerminalSessionInfo | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [line, setLine] = useState('');
@@ -57,7 +60,10 @@ function TermPane({ tab, active, dark, onTitle, onExit }: { tab: Tab; active: bo
     let disposed = false;
     const early: Array<{ sessionId: string; data?: string; exit?: boolean; error?: string }> = [];
     const handle = (d: { data?: string; exit?: boolean; error?: string }) => {
-      if (d.data) term.write(d.data);
+      if (d.data) {
+        term.write(d.data);
+        lastOutput.current = Date.now();
+      }
       if (d.exit) {
         setClosed(true);
         term.writeln(`\r\n\x1b[90m[process exited${d.error ? `: ${d.error}` : ''}]\x1b[0m`);
@@ -101,6 +107,18 @@ function TermPane({ tab, active, dark, onTitle, onExit }: { tab: Tab; active: bo
         setInfo(i);
         early.filter((d) => d.sessionId === i.sessionId).forEach(handle);
         term.focus();
+        // Type the command (without pressing Enter) once the shell has printed its prompt and gone quiet.
+        if (tab.initialInput) {
+          const started = Date.now();
+          const tick = setInterval(() => {
+            if (disposed || !sessionRef.current) return clearInterval(tick);
+            const quiet = lastOutput.current > 0 && Date.now() - lastOutput.current > 400;
+            if (quiet || Date.now() - started > 8000) {
+              clearInterval(tick);
+              void call('terminal:input', sessionRef.current, '\x15' + tab.initialInput);
+            }
+          }, 150);
+        }
       })
       .catch((err) => term.writeln(`\x1b[31m${errorMessage(err)}\x1b[0m`));
     if (tab.bind) void call('terminal:suggestions', tab.namespace || undefined).then(setSuggestions).catch(() => undefined);
@@ -173,6 +191,7 @@ export function TerminalDock({
   contextName,
   aws,
   execRequest,
+  typeRequest,
 }: {
   open: boolean;
   onClose: () => void;
@@ -184,6 +203,8 @@ export function TerminalDock({
   aws?: { label: string; cluster?: string; clusterName?: string };
   /** Each new value opens an ECS Exec tab. */
   execRequest?: { id: number; target: EcsExecTarget } | null;
+  /** Each new value opens a terminal with a command typed in (not run). */
+  typeRequest?: { id: number; text: string; title?: string; aws: boolean } | null;
 }) {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [active, setActive] = useState<number | null>(null);
@@ -209,7 +230,7 @@ export function TerminalDock({
   }, [aws, shell]);
 
   useEffect(() => {
-    if (open && tabs.length === 0 && !execRequest) {
+    if (open && tabs.length === 0 && !execRequest && !typeRequest) {
       if (aws) addAws();
       else add(connected);
     }
@@ -224,6 +245,19 @@ export function TerminalDock({
     setTabs((x) => [...x, { key, title: `exec ${execRequest.target.title}`, shell: 'auto', bind: false, namespace: '', exec: execRequest.target }]);
     setActive(key);
   }, [execRequest]);
+
+  const lastType = useRef(0);
+  useEffect(() => {
+    if (!typeRequest || typeRequest.id === lastType.current) return;
+    lastType.current = typeRequest.id;
+    const key = nextKey.current++;
+    const t: Tab = typeRequest.aws && aws
+      ? { key, title: typeRequest.title ?? 'aws', shell, bind: false, namespace: '', aws: { cluster: aws.cluster }, initialInput: typeRequest.text }
+      : { key, title: typeRequest.title ?? 'command', shell, bind: connected, namespace, initialInput: typeRequest.text };
+    setTabs((x) => [...x, t]);
+    setActive(key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeRequest]);
 
   const close = (key: number) => {
     setTabs((x) => {

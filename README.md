@@ -27,6 +27,11 @@
 | **Helm** | Releases, values, manifests, history, rollback, upgrade and uninstall, plus repositories, chart search, README/values and install with server-side dry run. |
 | **AI Assistant** | Ask about your Kubernetes or ECS clusters in plain language. It investigates with read-only tools (resources, events, logs, metrics, ECS tasks and CloudWatch logs) and drafts fixes for you to review, dry-run and apply. It never changes anything on its own. Uses your own Claude API key; secret values and environment values are never sent. |
 | **Amazon ECS** | A second workspace in the same app. Connect with an AWS profile (access keys, IAM Identity Center/SSO, `role_arn` profiles, credential process) or the default credential chain (environment, EC2 instance profile, ECS task role), optionally assuming an IAM role. **Read-only by default**: changes are blocked in the app until you switch it off. Clusters, services (deployments, events, target health, CPU/memory), tasks with stop reasons and exit codes, task definitions with JSON editing and revisions, CloudWatch logs per task or per service with live follow and filter patterns, a service map (load balancer → target group → service → tasks), an events feed, a security scan, and an *AWS shell* terminal bound to the profile and region. With write access: scale, redeploy, deploy or roll back a revision, enable ECS Exec, stop or run tasks, register revisions, create and delete services, each with a confirmation. |
+| **GitOps** | Flux and Argo CD objects with sync, health, source, revision and errors. Reconcile, suspend and resume (Flux); refresh and sync (Argo CD). |
+| **Cost** | Estimated monthly cost by namespace and workload, idle and unallocated cost, and rightsizing recommendations from live usage. For ECS, Fargate cost per service with smaller task-size suggestions. Rates are editable. |
+| **Image vulnerabilities** | Vulnerabilities of the images running in Kubernetes and ECS, from Trivy Operator reports or a local `trivy` scan, with the workloads affected. |
+| **MCP server** | Optional, local only (127.0.0.1 + token). AI tools such as Claude Code, Claude Desktop and Cursor can read your clusters through K8sConsole's read-only tools. |
+| **Extensions & hotbar** | Declarative extensions add terminal commands, links and policy rules without running third-party code. Pin clusters to the hotbar and switch with Alt+1…9. |
 | **Port forwarding & actions** | Pods and services (bound to 127.0.0.1), plus scale, rolling restart, evict, cordon, drain and CronJob trigger/suspend. Every change asks for confirmation. |
 
 ## Install
@@ -57,6 +62,9 @@ Your settings stay in `~/.config/K8sConsole/` (Linux), `~/Library/Application Su
 | Settings | Settings view; stored in `settings.json` in the settings folder above (owner-only permissions on Linux and macOS) |
 | AI Assistant | Open ✦ Assistant and add a Claude API key. It's encrypted with your OS keyring. Alternatively set `ANTHROPIC_API_KEY`. Choose the model, effort and log access in Settings. |
 | Helm | `helm` on `PATH`, or set its path in Settings |
+| MCP server | Settings → MCP server: enable it, then copy the `claude mcp add …` command or the JSON config into your AI tool. |
+| Extensions | Extensions view → *Add from JSON* or *Install file…*, or put `<id>/extension.json` in the extensions folder (*Open folder*). The format is in [`docs/EXTENSIONS.md`](docs/EXTENSIONS.md). |
+| Image scanning | Install the [Trivy Operator](https://aquasecurity.github.io/trivy-operator/) in the cluster, or the `trivy` CLI on this computer. |
 | Amazon ECS | Switch the sidebar to *Amazon ECS* and connect. Profiles come from `~/.aws/config` and `~/.aws/credentials` (or `AWS_CONFIG_FILE` / `AWS_SHARED_CREDENTIALS_FILE`). The last connection (profile, region, role, read-only) is remembered; credentials never are. |
 | Custom data folder | `K8SC_USER_DATA_DIR=/path k8sconsole` |
 

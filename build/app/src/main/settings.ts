@@ -6,7 +6,7 @@ import { isEcsArn, isValidEcsName, isValidProfileName, isValidRegion, isValidRol
 /** Coerces untrusted input into a valid settings object, dropping unknown keys and bad values. */
 export function sanitizeSettings(input: unknown, base: AppSettings = DEFAULT_SETTINGS): AppSettings {
   const src = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
-  const out: AppSettings = { ...base, lastNamespaces: { ...base.lastNamespaces }, ecsLastCluster: { ...base.ecsLastCluster } };
+  const out: AppSettings = { ...base, lastNamespaces: { ...base.lastNamespaces }, ecsLastCluster: { ...base.ecsLastCluster }, pinnedContexts: [...base.pinnedContexts], costPrices: { ...base.costPrices }, disabledExtensions: [...base.disabledExtensions] };
   if (src.theme === 'dark' || src.theme === 'light' || src.theme === 'system') out.theme = src.theme;
   const strArray = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length < 4096) : undefined);
   const files = strArray(src.kubeconfigFiles);
@@ -46,6 +46,21 @@ export function sanitizeSettings(input: unknown, base: AppSettings = DEFAULT_SET
     out.ecsLastCluster = {};
     for (const [k, v] of Object.entries(src.ecsLastCluster as Record<string, unknown>)) if (k.length < 300 && (isEcsArn(v, 'cluster') || isValidEcsName(v))) out.ecsLastCluster[k] = v as string;
   }
+  const pinned = strArray(src.pinnedContexts);
+  if (pinned) out.pinnedContexts = [...new Set(pinned)].slice(0, 20);
+  if (src.costPrices && typeof src.costPrices === 'object') {
+    const c = src.costPrices as Record<string, unknown>;
+    const rate = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 1000 ? v : undefined);
+    out.costPrices = {
+      cpuHour: rate(c.cpuHour) ?? out.costPrices.cpuHour,
+      memGiBHour: rate(c.memGiBHour) ?? out.costPrices.memGiBHour,
+      currency: typeof c.currency === 'string' && /^[A-Z]{3}$/.test(c.currency) ? c.currency : out.costPrices.currency,
+    };
+  }
+  if (typeof src.mcpEnabled === 'boolean') out.mcpEnabled = src.mcpEnabled;
+  if (typeof src.mcpPort === 'number' && Number.isInteger(src.mcpPort) && src.mcpPort >= 1024 && src.mcpPort <= 65535) out.mcpPort = src.mcpPort;
+  const disabled = strArray(src.disabledExtensions);
+  if (disabled) out.disabledExtensions = [...new Set(disabled.filter((d) => /^[a-z0-9][a-z0-9-]{0,62}$/.test(d)))];
   return out;
 }
 

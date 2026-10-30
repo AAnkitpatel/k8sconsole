@@ -6,6 +6,8 @@ import { EcsServicesView } from './ServicesView';
 import { EcsTasksView, type ExecTarget } from './TasksView';
 import { EcsTaskDefsView } from './TaskDefsView';
 import { EcsEventsView, EcsMapView, EcsMonitorView, EcsOverviewView, EcsSecurityView } from './InsightsViews';
+import { EcsCostView } from '../views/CostView';
+import { ImagesView } from '../views/ImagesView';
 
 /** `onNav` lets the shell leave its own Settings page when an ECS item is chosen. */
 export function EcsSidebar({ onNav, settingsOpen }: { onNav: () => void; settingsOpen: boolean }) {
@@ -53,6 +55,8 @@ export function EcsSidebar({ onNav, settingsOpen }: { onNav: () => void; setting
               {item({ type: 'map' }, 'Service Map', 'ecs-nav-map')}
               {item({ type: 'events' }, 'Events', 'ecs-nav-events')}
               {item({ type: 'security' }, 'Security Scan', 'ecs-nav-security')}
+              {item({ type: 'images' }, 'Image Vulnerabilities', 'ecs-nav-images')}
+              {item({ type: 'cost' }, 'Cost', 'ecs-nav-cost')}
             </div>
           </>
         )}
@@ -93,8 +97,8 @@ export function EcsTopbar() {
   );
 }
 
-export function EcsContent({ settings, dark, onExec }: { settings: AppSettings; dark: boolean; onExec: (t: ExecTarget) => void }) {
-  const { view } = useEcs();
+export function EcsContent({ settings, dark, onExec, onSettings }: { settings: AppSettings; dark: boolean; onExec: (t: ExecTarget) => void; onSettings: (s: AppSettings) => void }) {
+  const { view, cluster } = useEcs();
   switch (view.type) {
     case 'connect':
       return <EcsConnectView settings={settings} />;
@@ -114,6 +118,10 @@ export function EcsContent({ settings, dark, onExec }: { settings: AppSettings; 
       return <EcsEventsView />;
     case 'security':
       return <EcsSecurityView />;
+    case 'cost':
+      return <EcsCostView key={cluster} cluster={cluster} settings={settings} onSettings={onSettings} />;
+    case 'images':
+      return <ImagesView key={cluster} source="ecs" cluster={cluster} />;
   }
 }
 

@@ -4,6 +4,20 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-30
+
+### Added
+- **GitOps.** Flux (Kustomizations, HelmReleases, Git/OCI/Helm sources, image automation) and Argo CD (Applications, ApplicationSets) with sync, health, source, revision and errors. Actions, each confirmed: reconcile, suspend and resume (Flux); refresh, hard refresh and sync (Argo CD).
+- **Cost monitoring.**
+  - **Kubernetes:** estimated monthly cost by namespace and workload, from requests and live usage. It also shows idle (requested but unused) cost, unallocated cluster capacity, and rightsizing recommendations from peak usage.
+  - **Amazon ECS:** Fargate cost per service, with a smaller valid task size suggested from 24-hour utilization.
+  - **Rates:** editable in the Cost view.
+- **Image vulnerability scanning** for images running in Kubernetes and in ECS task definitions. Reads Trivy Operator reports from the cluster (agent-free for the app) or scans with a local `trivy`, with ECR images authenticated through the app's AWS connection. Shows severity counts, fixable vulnerabilities and the workloads affected.
+- **Built-in MCP server**, off by default. Claude Code, Claude Desktop, Cursor and other MCP clients can use K8sConsole's read-only tools against the connected cluster and AWS account. It listens on 127.0.0.1 only, needs a bearer token, rejects browser origins, and lists recent calls in Settings.
+- **Extensions:** declarative JSON add-ons that add terminal commands (typed in, never run automatically), links and policy rules. No third-party code runs inside the app.
+- **Hotbar:** pin clusters for one-click switching (Alt+1…9).
+- AI assistant tools for GitOps, cost and image vulnerabilities.
+
 ## [1.3.0] - 2026-10-20
 
 ### Added
@@ -56,7 +70,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
   - logs, pod shells, an integrated terminal, port forwarding
   - Security Scan with fixes, Access (who-can, permission matrix, role editor), Helm, and the AI Assistant
 
-[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/AAnkitpatel/k8sconsole/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.4.0
 [1.3.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.3.0
 [1.2.1]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.1
 [1.2.0]: https://github.com/AAnkitpatel/k8sconsole/releases/tag/v1.2.0

@@ -14,7 +14,9 @@ export type EcsView =
   | { type: 'monitor' }
   | { type: 'map' }
   | { type: 'events' }
-  | { type: 'security' };
+  | { type: 'security' }
+  | { type: 'cost' }
+  | { type: 'images' };
 
 interface EcsState {
   status: AwsConnectionStatus;

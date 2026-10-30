@@ -50,6 +50,7 @@ import {
   type EcsTaskDefinitionFamily,
 } from '../../shared/ecs';
 import type { ResourceGraph } from '../../shared/graph';
+import { ecsCost, type CostPrices, type EcsCostService } from '../../shared/cost';
 import { ReadOnlyError, type AwsClients } from './session';
 
 const ms = (d: unknown): number | undefined => (d instanceof Date ? d.getTime() : typeof d === 'string' || typeof d === 'number' ? new Date(d).getTime() || undefined : undefined);
@@ -527,6 +528,37 @@ export class EcsApi {
     if (Object.keys(input).length === 2) throw new Error('Nothing to change');
     const r = await this.aws.ecs.send(new UpdateServiceCommand(input as any));
     return toService(r.service);
+  }
+
+  /** Estimated monthly Fargate cost per service, from task size, running count and 24-hour average utilization. */
+  async cost(cluster: string, prices: CostPrices): Promise<ReturnType<typeof ecsCost> & { notes: string[] }> {
+    const notes: string[] = [];
+    const services = await this.listServices(cluster);
+    const avg = (v: number[]) => {
+      const f = v.filter(Number.isFinite);
+      return f.length ? f.reduce((a, b) => a + b, 0) / f.length : undefined;
+    };
+    let util: Record<string, { cpu?: number; mem?: number }> = {};
+    try {
+      const m = await this.metrics(cluster, services.filter((s) => s.running > 0).map((s) => s.name), 1440);
+      util = Object.fromEntries(Object.entries(m.services).map(([k, v]) => [k, { cpu: avg(v.cpu), mem: avg(v.mem) }]));
+    } catch (err) {
+      notes.push(`Utilization unavailable: ${(err as Error).message}`);
+    }
+    const inputs: EcsCostService[] = [];
+    for (const s of services) {
+      const { def } = await this.taskDefinition(s.taskDefinition);
+      let cpu = Number(def.cpu) || 0;
+      let mem = Number(def.memory) || 0;
+      if (!cpu || !mem) {
+        // EC2 task definitions can size containers individually.
+        cpu ||= (def.containerDefinitions ?? []).reduce((a: number, c: any) => a + (Number(c.cpu) || 0), 0);
+        mem ||= (def.containerDefinitions ?? []).reduce((a: number, c: any) => a + (Number(c.memory ?? c.memoryReservation) || 0), 0);
+      }
+      if (s.launchType && s.launchType !== 'FARGATE') notes.push(`${s.name} runs on ${s.launchType}: its cost is part of the instances, shown here at Fargate rates for comparison.`);
+      inputs.push({ service: s.name, launchType: s.launchType ?? (s.capacityProviders.some((c) => c.startsWith('FARGATE')) ? 'FARGATE' : undefined), running: s.running, cpuUnits: cpu, memMiB: mem, cpuPct: util[s.name]?.cpu, memPct: util[s.name]?.mem });
+    }
+    return { ...ecsCost(inputs, prices), notes };
   }
 
   /** Starts an ECS Exec session; the returned stream URL and token open a Session Manager data channel. */
